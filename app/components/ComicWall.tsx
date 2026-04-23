@@ -11,26 +11,19 @@ type ComicWallProps = {
 type CommentMap = Record<string, string[]>;
 type LikeMap = Record<string, number>;
 
+type ComicReaction = {
+  photo: string;
+  likes: number;
+  comments: { text: string; createdAt: string }[];
+};
+
 const rotations = ["-2.5deg", "1.5deg", "-1deg", "2.2deg", "0deg", "-1.8deg"];
 const aspectRatios = ["4 / 5", "1 / 1", "3 / 4", "5 / 4", "4 / 3", "2 / 3"];
-const STORAGE_KEY = "comic-wall-reactions-v1";
-
-function readStoredState() {
-  if (typeof window === "undefined") return { likes: {}, comments: {} };
-
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { likes: {}, comments: {} };
-    return JSON.parse(raw) as { likes: LikeMap; comments: CommentMap };
-  } catch {
-    return { likes: {}, comments: {} };
-  }
-}
 
 export default function ComicWall({ photos }: ComicWallProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [likes, setLikes] = useState<LikeMap>(() => readStoredState().likes ?? {});
-  const [comments, setComments] = useState<CommentMap>(() => readStoredState().comments ?? {});
+  const [likes, setLikes] = useState<LikeMap>({});
+  const [comments, setComments] = useState<CommentMap>({});
   const [commentDraft, setCommentDraft] = useState("");
   const [burstPhoto, setBurstPhoto] = useState<string | null>(null);
 
@@ -38,8 +31,36 @@ export default function ComicWall({ photos }: ComicWallProps) {
   const selectedComments = selectedPhoto ? comments[selectedPhoto] ?? [] : [];
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ likes, comments }));
-  }, [likes, comments]);
+    const controller = new AbortController();
+    const searchParams = new URLSearchParams();
+    photos.forEach((photo) => searchParams.append("photo", photo));
+
+    fetch(`/api/comic-reactions?${searchParams.toString()}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((response) => response.json())
+      .then((data: { reactions?: ComicReaction[] }) => {
+        const nextLikes: LikeMap = {};
+        const nextComments: CommentMap = {};
+
+        data.reactions?.forEach((reaction) => {
+          nextLikes[reaction.photo] = reaction.likes;
+          nextComments[reaction.photo] = reaction.comments.map((comment) => comment.text);
+        });
+
+        setLikes(nextLikes);
+        setComments(nextComments);
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") {
+          setLikes({});
+          setComments({});
+        }
+      });
+
+    return () => controller.abort();
+  }, [photos]);
 
   useEffect(() => {
     if (selectedIndex === null) return;
@@ -65,13 +86,29 @@ export default function ComicWall({ photos }: ComicWallProps) {
     return `#${String(selectedIndex + 1).padStart(2, "0")}`;
   }, [selectedIndex]);
 
-  function likePhoto(photo: string) {
+  async function likePhoto(photo: string) {
     setLikes((current) => ({ ...current, [photo]: (current[photo] ?? 0) + 1 }));
     setBurstPhoto(photo);
     window.setTimeout(() => setBurstPhoto(null), 620);
+
+    try {
+      const response = await fetch("/api/comic-reactions", {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "like", photo }),
+      });
+      const data = await response.json();
+
+      if (response.ok && data.reaction) {
+        setLikes((current) => ({ ...current, [photo]: data.reaction.likes }));
+      }
+    } catch {
+      setLikes((current) => ({ ...current, [photo]: Math.max((current[photo] ?? 1) - 1, 0) }));
+    }
   }
 
-  function submitComment(event: FormEvent<HTMLFormElement>) {
+  async function submitComment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedPhoto) return;
 
@@ -83,6 +120,28 @@ export default function ComicWall({ photos }: ComicWallProps) {
       [selectedPhoto]: [text, ...(current[selectedPhoto] ?? [])].slice(0, 12),
     }));
     setCommentDraft("");
+
+    try {
+      const response = await fetch("/api/comic-reactions", {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "comment", photo: selectedPhoto, text }),
+      });
+      const data = await response.json();
+
+      if (response.ok && data.reaction) {
+        setComments((current) => ({
+          ...current,
+          [selectedPhoto]: data.reaction.comments.map((comment: { text: string }) => comment.text),
+        }));
+      }
+    } catch {
+      setComments((current) => ({
+        ...current,
+        [selectedPhoto]: (current[selectedPhoto] ?? []).filter((comment, index) => index !== 0 || comment !== text),
+      }));
+    }
   }
 
   return (
