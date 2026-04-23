@@ -1,26 +1,362 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f6ead2;
+  --foreground: #15120f;
+  --accent-warm: #e8b4a0;
+  --accent-gold: #d4a574;
+  --accent-rose: #c9a0a0;
+  --card-bg: rgba(20, 20, 28, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --todo-accent: #6366f1;
+  --todo-accent-hover: #818cf8;
+  --todo-success: #22c55e;
+  --todo-danger: #ef4444;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  --font-mono: 'SF Mono', Consolas, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.comic-home {
+  position: relative;
+  background:
+    radial-gradient(circle at 12px 12px, rgba(21, 18, 15, 0.16) 1.5px, transparent 1.8px) 0 0 / 24px 24px,
+    linear-gradient(135deg, #f7de61 0%, #f7de61 28%, #ef5b4b 28%, #ef5b4b 52%, #79c7d9 52%, #79c7d9 76%, #f6ead2 76%);
+}
+
+.comic-home::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.22) 1px, transparent 1px) 0 0 / 9px 9px,
+    linear-gradient(0deg, rgba(0, 0, 0, 0.08) 1px, transparent 1px) 0 0 / 9px 9px;
+  mix-blend-mode: multiply;
+  opacity: 0.36;
+}
+
+.comic-title {
+  color: #101010;
+  letter-spacing: 0;
+  text-shadow:
+    4px 4px 0 #ffffff,
+    9px 9px 0 #111111,
+    13px 13px 0 #ef5b4b;
+}
+
+.comic-grid {
+  column-count: 1;
+  column-gap: 1rem;
+}
+
+.comic-frame {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  aspect-ratio: var(--ratio);
+  margin: 0 0 1rem;
+  break-inside: avoid;
+  overflow: hidden;
+  border: 5px solid #111111;
+  background: #ffffff;
+  box-shadow: 8px 8px 0 #111111;
+  transform: rotate(var(--rotate));
+  animation: comicPanelIn 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--delay);
+}
+
+.comic-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle, rgba(0, 0, 0, 0.18) 0 1px, transparent 1.5px) 0 0 / 7px 7px,
+    linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent 42%);
+  mix-blend-mode: multiply;
+  opacity: 0.32;
+}
+
+.comic-frame:hover {
+  z-index: 2;
+  transform: rotate(0deg) translateY(-6px);
+  box-shadow: 13px 13px 0 #111111;
+}
+
+@keyframes comicPanelIn {
+  from {
+    opacity: 0;
+    transform: rotate(var(--rotate)) translateY(28px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(var(--rotate)) translateY(0) scale(1);
+  }
+}
+
+@media (min-width: 640px) {
+  .comic-grid {
+    column-count: 2;
+    column-gap: 1.25rem;
+  }
+
+  .comic-frame {
+    margin-bottom: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .comic-grid {
+    column-count: 3;
+    column-gap: 1.5rem;
+  }
+
+  .comic-frame {
+    margin-bottom: 1.5rem;
+  }
+}
+
+/* ========================================
+   Todo List 样式
+   ======================================== */
+
+/* 自定义 Checkbox 样式 */
+.todo-checkbox {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border: 2px solid rgba(99, 102, 241, 0.4);
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  flex-shrink: 0;
+}
+
+.todo-checkbox:hover {
+  border-color: rgba(99, 102, 241, 0.7);
+  transform: scale(1.05);
+}
+
+.todo-checkbox:checked {
+  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+  border-color: transparent;
+  animation: checkboxPop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.todo-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 10px;
+  border: 2px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: translate(-50%, -60%) rotate(45deg) scale(1);
+  animation: checkmarkDraw 0.3s ease forwards;
+}
+
+@keyframes checkboxPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+@keyframes checkmarkDraw {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -60%) rotate(45deg) scale(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -60%) rotate(45deg) scale(1);
+  }
+}
+
+/* Todo 项过渡动画 */
+.todo-item {
+  animation: todoSlideIn 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+.todo-item.removing {
+  animation: todoSlideOut 0.3s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+@keyframes todoSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes todoSlideOut {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+
+/* 输入框聚焦效果 */
+.todo-input {
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+}
+
+.todo-input:focus {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+/* 过滤 Tab 激活状态 */
+.filter-tab {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.filter-tab::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #6366f1, #818cf8);
+  border-radius: 1px;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  transform: translateX(-50%);
+}
+
+.filter-tab.active::after {
+  width: 100%;
+}
+
+.filter-tab.active {
+  color: #818cf8;
+}
+
+/* 滚动条美化 */
+.todo-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.todo-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 2px;
+}
+
+.todo-list::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.3), rgba(129, 140, 248, 0.3));
+  border-radius: 2px;
+}
+
+.todo-list::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.5), rgba(129, 140, 248, 0.5));
+}
+
+/* 空状态淡入动画 */
+.empty-state {
+  animation: emptyFadeIn 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+@keyframes emptyFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 删除按钮悬停效果 */
+.delete-btn {
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all 0.2s ease;
+}
+
+.todo-item:hover .delete-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.delete-btn:hover {
+  color: #ef4444;
+  transform: scale(1.1);
+}
+
+/* ========================================
+   全局滚动条
+   ======================================== */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.4);
+}
+
+/* ========================================
+   选择样式
+   ======================================== */
+
+::selection {
+  background: rgba(99, 102, 241, 0.3);
+  color: #f8f7f4;
+}
+
+/* ========================================
+   响应式调整
+   ======================================== */
+
+@media (max-width: 640px) {
+  .todo-checkbox {
+    width: 20px;
+    height: 20px;
+  }
+
+  .todo-checkbox:checked::after {
+    width: 5px;
+    height: 9px;
+  }
 }
