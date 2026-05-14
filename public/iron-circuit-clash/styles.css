@@ -168,6 +168,147 @@ button {
   transform: scale(1);
 }
 
+.lobby-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: clamp(14px, 3vw, 34px);
+  background:
+    radial-gradient(circle at 28% 18%, rgba(240, 182, 79, 0.16), transparent 28%),
+    radial-gradient(circle at 76% 64%, rgba(66, 202, 184, 0.16), transparent 30%),
+    rgba(8, 7, 5, 0.74);
+  backdrop-filter: blur(4px);
+}
+
+.lobby-panel.is-hidden {
+  display: none;
+}
+
+.lobby-card {
+  width: min(92%, 720px);
+  max-height: 86%;
+  overflow: auto;
+  padding: clamp(18px, 3vw, 34px);
+  border: 2px solid rgba(246, 234, 208, 0.32);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 22%),
+    repeating-linear-gradient(90deg, rgba(240, 182, 79, 0.08) 0 12px, transparent 12px 24px),
+    rgba(15, 10, 7, 0.92);
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.55),
+    inset 0 0 44px rgba(66, 202, 184, 0.08);
+}
+
+.lobby-kicker {
+  margin: 0 0 8px;
+  color: var(--cyan);
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: clamp(0.82rem, 2vw, 1rem);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.lobby-card h1 {
+  margin: 0;
+  color: var(--bone);
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: clamp(2.4rem, 7vw, 5.4rem);
+  line-height: 0.9;
+  letter-spacing: 0;
+  text-shadow: 0 4px 0 #000, 0 0 20px rgba(240, 182, 79, 0.24);
+}
+
+.lobby-message {
+  min-height: 1.4em;
+  margin: 12px 0 18px;
+  color: rgba(246, 234, 208, 0.78);
+  font-size: clamp(0.92rem, 2vw, 1.05rem);
+}
+
+.lobby-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.lobby-actions button,
+.room-list button {
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #f6d56f, #c07320);
+  color: #140b07;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: 1rem;
+  letter-spacing: 0;
+  box-shadow:
+    0 6px 0 #070504,
+    0 12px 16px rgba(0, 0, 0, 0.34),
+    inset 0 2px 0 rgba(255, 255, 255, 0.24);
+}
+
+.lobby-actions button:nth-child(1) {
+  background: linear-gradient(180deg, #44d5c4, #1b746f);
+  color: #06100f;
+}
+
+.lobby-actions button:nth-child(3) {
+  background: linear-gradient(180deg, #42342a, #15100d);
+  border: 1px solid rgba(246, 234, 208, 0.24);
+  color: var(--bone);
+}
+
+.lobby-actions button:disabled,
+.room-list button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.72);
+  opacity: 0.58;
+}
+
+.room-list {
+  display: grid;
+  gap: 9px;
+}
+
+.room-empty,
+.room-row {
+  min-height: 52px;
+  display: grid;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(246, 234, 208, 0.14);
+  border-radius: 6px;
+  background: rgba(8, 7, 5, 0.54);
+}
+
+.room-row {
+  grid-template-columns: 1fr auto auto;
+}
+
+.room-title {
+  color: var(--bone);
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.room-meta {
+  color: rgba(246, 234, 208, 0.62);
+  font-size: 0.86rem;
+}
+
+.room-badge {
+  min-width: 82px;
+  color: var(--cyan);
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  text-align: right;
+}
+
 .control-deck {
   min-height: 72px;
   display: flex;
@@ -215,6 +356,15 @@ button {
   border: 1px solid rgba(246, 234, 208, 0.22);
   color: var(--bone);
   font-weight: 800;
+}
+
+.match-status {
+  min-width: 116px;
+  color: rgba(246, 234, 208, 0.76);
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: 1rem;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 .coin-button:active,
@@ -325,12 +475,28 @@ button {
     display: none;
   }
 
+  .match-status {
+    margin-left: auto;
+    min-width: 76px;
+    font-size: 0.88rem;
+    text-align: right;
+  }
+
   .touch-controls {
     display: flex;
   }
 }
 
 @media (max-width: 470px) {
+  .room-row {
+    grid-template-columns: 1fr;
+  }
+
+  .room-badge {
+    min-width: 0;
+    text-align: left;
+  }
+
   .touch-controls {
     gap: 10px;
   }

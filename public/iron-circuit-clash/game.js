@@ -1,85 +1,19 @@
+import { ACTIONS, BattleGame, WORLD, clamp, createInputState } from "./engine.mjs";
+
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const announcer = document.getElementById("announcer");
 const startButton = document.getElementById("startButton");
 const resetButton = document.getElementById("resetButton");
 const muteButton = document.getElementById("muteButton");
-
-const WORLD = {
-  width: 1280,
-  height: 720,
-  floor: 606,
-  leftWall: 70,
-  rightWall: 1210,
-  gravity: 2300,
-};
-
-const ATTACKS = {
-  punch: {
-    name: "jab",
-    duration: 0.3,
-    startup: 0.055,
-    active: 0.1,
-    range: 72,
-    height: 64,
-    y: 116,
-    damage: 6.5,
-    chip: 1.1,
-    stun: 0.2,
-    blockStun: 0.12,
-    knock: 190,
-    meter: 8,
-    shake: 6,
-  },
-  kick: {
-    name: "roundhouse",
-    duration: 0.43,
-    startup: 0.1,
-    active: 0.13,
-    range: 104,
-    height: 56,
-    y: 82,
-    damage: 10,
-    chip: 2,
-    stun: 0.27,
-    blockStun: 0.18,
-    knock: 260,
-    meter: 11,
-    shake: 9,
-  },
-  elbow: {
-    name: "elbow",
-    duration: 0.52,
-    startup: 0.14,
-    active: 0.14,
-    range: 92,
-    height: 78,
-    y: 108,
-    damage: 13,
-    chip: 2.4,
-    stun: 0.33,
-    blockStun: 0.21,
-    knock: 320,
-    meter: 14,
-    shake: 12,
-  },
-  super: {
-    name: "circuit breaker",
-    duration: 0.66,
-    startup: 0.18,
-    active: 0.18,
-    range: 132,
-    height: 98,
-    y: 112,
-    damage: 19,
-    chip: 4,
-    stun: 0.42,
-    blockStun: 0.26,
-    knock: 440,
-    meter: 0,
-    shake: 18,
-  },
-};
+const lobbyPanel = document.getElementById("lobbyPanel");
+const connectionStatus = document.getElementById("connectionStatus");
+const lobbyMessage = document.getElementById("lobbyMessage");
+const practiceButton = document.getElementById("practiceButton");
+const createRoomButton = document.getElementById("createRoomButton");
+const refreshRoomsButton = document.getElementById("refreshRoomsButton");
+const roomList = document.getElementById("roomList");
+const matchStatus = document.getElementById("matchStatus");
 
 const P1_CONTROLS = {
   left: ["KeyA"],
@@ -103,14 +37,7 @@ const P2_CONTROLS = {
   special: ["Numpad3", "Slash", "Digit3"],
 };
 
-const BLOCKED_KEYS = new Set([
-  "ArrowLeft",
-  "ArrowRight",
-  "ArrowUp",
-  "ArrowDown",
-  "Space",
-]);
-
+const BLOCKED_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"]);
 const p2ControlCodes = new Set(Object.values(P2_CONTROLS).flat());
 const keys = new Set();
 const justPressed = new Set();
@@ -123,6 +50,27 @@ const TOUCH_TAP_PULSE_MS = 620;
 
 let audioContext = null;
 let muted = false;
+let announcementTimer = null;
+let mode = "lobby";
+let socket = null;
+let reconnectTimer = null;
+let reconnectAttempts = 0;
+let currentRoom = null;
+let currentSeat = null;
+let lastSentInput = "";
+let lastInputSentAt = 0;
+let connectionState = "connecting";
+
+const offlineGame = new BattleGame({ online: false });
+let latestSnapshot = offlineGame.consumeSnapshot();
+latestSnapshot.events = [];
+
+const LOBBY_DEFAULT_MESSAGE = "创建房间，或加入一个等待中的对手。";
+const CONNECTION_LABELS = {
+  connecting: "连接中",
+  online: "联机可用",
+  offline: "联机断开",
+};
 
 function initAudio() {
   if (!audioContext && !muted) {
@@ -155,14 +103,6 @@ function beep(type) {
   osc.stop(now + settings[1] + 0.02);
 }
 
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function rectsOverlap(a, b) {
-  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
-}
-
 function hasAny(codeList, source) {
   return codeList.some((code) => source.has(code));
 }
@@ -178,883 +118,301 @@ function pulseTouch(action, duration = TOUCH_HOLD_PULSE_MS) {
   }
 }
 
-function makeHumanCommand(controls, includeTouch = false) {
-  return {
-    hold(action) {
-      return hasAny(controls[action] || [], keys) || (includeTouch && (touchHeld.has(action) || hasTouchPulse(action)));
-    },
-    press(action) {
-      return hasAny(controls[action] || [], justPressed) || (includeTouch && touchPressed.has(action));
-    },
-  };
+function makeHumanInput(controls, includeTouch = false) {
+  const input = createInputState();
+  for (const action of ACTIONS) {
+    input.hold[action] = hasAny(controls[action] || [], keys) || (includeTouch && (touchHeld.has(action) || hasTouchPulse(action)));
+    input.press[action] = hasAny(controls[action] || [], justPressed) || (includeTouch && touchPressed.has(action));
+  }
+  return input;
 }
 
-class CPUCommand {
-  constructor() {
-    this.holds = new Set();
-    this.presses = new Set();
-    this.cooldown = 0.2;
-    this.blockWindow = 0;
-    this.jumpClock = 1.8;
-  }
+function connectSocket() {
+  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
 
-  update(dt, self, foe) {
-    this.holds.clear();
-    this.presses.clear();
-    this.cooldown = Math.max(0, this.cooldown - dt);
-    this.blockWindow = Math.max(0, this.blockWindow - dt);
-    this.jumpClock = Math.max(0, this.jumpClock - dt);
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  socket = new WebSocket(`${protocol}//${window.location.host}/ws/iron-circuit-clash`);
+  setConnectionStatus("connecting");
 
-    const distance = Math.abs(foe.x - self.x);
-    const foeThreat = foe.attack && foe.isAttackActive() && distance < 180;
-    const projectileThreat = game.projectiles.some(
-      (projectile) => projectile.owner !== self && Math.abs(projectile.x - self.x) < 220
-    );
+  socket.addEventListener("open", () => {
+    reconnectAttempts = 0;
+    setConnectionStatus("online");
+    sendSocket({ type: "hello", name: "玩家" });
+    sendSocket({ type: "listRooms" });
+  });
 
-    if ((foeThreat || projectileThreat) && Math.random() < 0.08) {
-      this.blockWindow = 0.28;
-    }
-
-    if (this.blockWindow > 0 && self.onGround) {
-      this.holds.add("block");
-    }
-
-    if (distance > 165 && !foe.attack) {
-      this.holds.add(foe.x < self.x ? "left" : "right");
-    } else if (distance < 72) {
-      this.holds.add(foe.x < self.x ? "right" : "left");
-    }
-
-    if (this.jumpClock === 0 && distance < 230 && Math.random() < 0.22) {
-      this.presses.add("up");
-      this.jumpClock = 2.3 + Math.random() * 1.7;
-    }
-
-    if (this.cooldown > 0 || self.attack || self.hitstun > 0 || self.blockstun > 0) return;
-
-    if (self.meter >= 38 && distance > 185 && distance < 560 && Math.random() < 0.72) {
-      this.presses.add("special");
-      this.cooldown = 0.78 + Math.random() * 0.28;
+  socket.addEventListener("message", (event) => {
+    let message = null;
+    try {
+      message = JSON.parse(event.data);
+    } catch {
       return;
     }
+    handleServerMessage(message);
+  });
 
-    if (distance < 95) {
-      this.presses.add(Math.random() < 0.54 ? "punch" : "kick");
-      this.cooldown = 0.45 + Math.random() * 0.25;
-    } else if (distance < 150 && Math.random() < 0.62) {
-      this.presses.add("kick");
-      this.cooldown = 0.58 + Math.random() * 0.28;
-    } else if (self.meter >= 20 && distance < 250 && Math.random() < 0.32) {
-      this.presses.add("special");
-      this.cooldown = 0.76;
+  socket.addEventListener("close", () => {
+    setConnectionStatus("offline");
+    if (mode === "online" || currentRoom) {
+      currentRoom = null;
+      currentSeat = null;
+      mode = "lobby";
+      showLobby("连接已断开，仍可进入单机练习。");
     }
-  }
+    scheduleReconnect();
+  });
 
-  hold(action) {
-    return this.holds.has(action);
-  }
-
-  press(action) {
-    return this.presses.has(action);
-  }
+  socket.addEventListener("error", () => {
+    setConnectionStatus("offline");
+  });
 }
 
-class Fighter {
-  constructor(config) {
-    this.name = config.name;
-    this.shortName = config.shortName;
-    this.x = config.x;
-    this.y = WORLD.floor;
-    this.spawnX = config.x;
-    this.width = 74;
-    this.height = 154;
-    this.crouchHeight = 104;
-    this.color = config.color;
-    this.dark = config.dark;
-    this.accent = config.accent;
-    this.skin = config.skin;
-    this.glow = config.glow;
-    this.controls = config.controls;
-    this.health = 100;
-    this.meter = 0;
-    this.wins = 0;
-    this.vx = 0;
-    this.vy = 0;
-    this.facing = config.facing;
-    this.onGround = true;
-    this.attack = null;
-    this.hitstun = 0;
-    this.blockstun = 0;
-    this.invulnerable = 0;
-    this.state = "idle";
-    this.combo = 0;
-    this.comboTimer = 0;
-    this.anim = 0;
-    this.guardFlash = 0;
-    this.superFlash = 0;
-  }
+function scheduleReconnect() {
+  if (reconnectTimer) return;
+  const delay = Math.min(5000, 800 + reconnectAttempts * 600);
+  reconnectAttempts += 1;
+  reconnectTimer = window.setTimeout(() => {
+    reconnectTimer = null;
+    connectSocket();
+  }, delay);
+}
 
-  resetForRound(x, facing) {
-    this.x = x;
-    this.y = WORLD.floor;
-    this.spawnX = x;
-    this.vx = 0;
-    this.vy = 0;
-    this.facing = facing;
-    this.health = 100;
-    this.meter = clamp(this.meter, 0, 45);
-    this.attack = null;
-    this.hitstun = 0;
-    this.blockstun = 0;
-    this.invulnerable = 0;
-    this.state = "idle";
-    this.combo = 0;
-    this.comboTimer = 0;
-    this.guardFlash = 0;
-    this.superFlash = 0;
-  }
+function sendSocket(message) {
+  if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+  socket.send(JSON.stringify(message));
+  return true;
+}
 
-  get currentHeight() {
-    return this.state === "crouch" || this.state === "blockLow" ? this.crouchHeight : this.height;
-  }
-
-  get hurtbox() {
-    const h = this.currentHeight;
-    return {
-      x: this.x - this.width / 2,
-      y: this.y - h,
-      w: this.width,
-      h,
-    };
-  }
-
-  get centerY() {
-    return this.y - this.currentHeight * 0.52;
-  }
-
-  canAct() {
-    return this.health > 0 && this.hitstun <= 0 && this.blockstun <= 0 && !this.attack;
-  }
-
-  isAttackActive() {
-    if (!this.attack) return false;
-    const { def, elapsed } = this.attack;
-    return elapsed >= def.startup && elapsed <= def.startup + def.active;
-  }
-
-  isGuarding(command) {
-    if (!this.onGround || this.attack || this.hitstun > 0 || this.health <= 0) return false;
-    const holdingBack = this.facing === 1 ? command.hold("left") : command.hold("right");
-    return command.hold("block") || holdingBack;
-  }
-
-  startAttack(kind, gameState) {
-    if (!this.canAct()) return;
-
-    let attackKind = kind;
-    if (kind === "special") {
-      if (this.meter >= 42) {
-        attackKind = "super";
-        this.meter -= 42;
-        this.superFlash = 0.3;
-        gameState.flash = 0.18;
-        beep("super");
-      } else if (this.meter >= 22) {
-        this.meter -= 22;
-        this.attack = {
-          kind: "wave",
-          def: {
-            ...ATTACKS.elbow,
-            duration: 0.42,
-            startup: 0.16,
-            active: 0.08,
-            damage: 8,
-          },
-          elapsed: 0,
-          hitTargets: new Set(),
-          spawned: false,
-        };
-        this.state = "attack";
-        return;
-      } else {
-        attackKind = "elbow";
+function handleServerMessage(message) {
+  switch (message.type) {
+    case "welcome":
+      sendSocket({ type: "listRooms" });
+      break;
+    case "rooms":
+      renderRooms(message.rooms || []);
+      break;
+    case "roomJoined":
+      currentRoom = message.room;
+      currentSeat = message.seat;
+      mode = "lobby";
+      showLobby(currentSeat === 1 ? `你已创建 ${currentRoom.name}，等待对手加入。` : `你已加入 ${currentRoom.name}。`);
+      renderRoomControls();
+      break;
+    case "matchStart":
+      currentRoom = message.room || currentRoom;
+      mode = "online";
+      latestSnapshot = message.snapshot || latestSnapshot;
+      lastSentInput = "";
+      lastInputSentAt = 0;
+      hideLobby();
+      processEvents(latestSnapshot.events);
+      updateDeckStatus();
+      break;
+    case "state":
+      if (mode === "online") {
+        latestSnapshot = message.snapshot;
+        processEvents(latestSnapshot.events);
       }
-    }
-
-    this.attack = {
-      kind: attackKind,
-      def: ATTACKS[attackKind],
-      elapsed: 0,
-      hitTargets: new Set(),
-      spawned: false,
-    };
-    this.state = "attack";
-  }
-
-  getAttackBox() {
-    if (!this.attack || this.attack.kind === "wave") return null;
-    const def = this.attack.def;
-    const h = def.height;
-    const w = def.range;
-    return {
-      x: this.facing === 1 ? this.x + this.width * 0.18 : this.x - this.width * 0.18 - w,
-      y: this.y - def.y - h * 0.5,
-      w,
-      h,
-    };
-  }
-
-  applyHit(def, attacker, blocked, gameState) {
-    const damage = blocked ? def.chip : def.damage;
-    this.health = clamp(this.health - damage, 0, 100);
-    this.invulnerable = blocked ? 0.05 : 0.08;
-
-    if (blocked) {
-      this.blockstun = def.blockStun;
-      this.guardFlash = 0.18;
-      this.vx = attacker.facing * def.knock * 0.28;
-      this.meter = clamp(this.meter + 5, 0, 100);
-      attacker.meter = clamp(attacker.meter + def.meter * 0.28, 0, 100);
-      gameState.addGuardSpark(this.x - this.facing * 34, this.centerY);
-      beep("block");
-      return;
-    }
-
-    this.hitstun = def.stun;
-    this.state = "hit";
-    this.vx = attacker.facing * def.knock;
-    if (!this.onGround || def.damage >= 13) this.vy = Math.min(this.vy, -230);
-    this.combo += 1;
-    this.comboTimer = 1.05;
-    attacker.meter = clamp(attacker.meter + def.meter, 0, 100);
-    gameState.hitStop = Math.max(gameState.hitStop, 0.045);
-    gameState.cameraShake = Math.max(gameState.cameraShake, def.shake);
-    gameState.addHitSpark(this.x - this.facing * 28, this.centerY, attacker.facing, def.damage >= 13);
-    beep("hit");
-  }
-
-  update(dt, opponent, command, opponentCommand, gameState) {
-    this.anim += dt;
-    this.facing = opponent.x > this.x ? 1 : -1;
-    this.invulnerable = Math.max(0, this.invulnerable - dt);
-    this.guardFlash = Math.max(0, this.guardFlash - dt);
-    this.superFlash = Math.max(0, this.superFlash - dt);
-    this.comboTimer = Math.max(0, this.comboTimer - dt);
-    if (this.comboTimer === 0) this.combo = 0;
-
-    if (this.health <= 0) {
-      this.state = "ko";
-      this.attack = null;
-      this.vx *= 0.95;
-      this.applyPhysics(dt);
-      return;
-    }
-
-    if (this.hitstun > 0) {
-      this.hitstun = Math.max(0, this.hitstun - dt);
-      this.applyPhysics(dt);
-      if (this.hitstun === 0) this.state = this.onGround ? "idle" : "jump";
-      return;
-    }
-
-    if (this.blockstun > 0) {
-      this.blockstun = Math.max(0, this.blockstun - dt);
-      this.state = "block";
-      this.applyPhysics(dt);
-      if (this.blockstun === 0) this.state = "idle";
-      return;
-    }
-
-    if (this.attack) {
-      this.attack.elapsed += dt;
-      this.updateAttack(opponent, opponentCommand, gameState);
-      this.applyPhysics(dt, 0.76);
-      if (this.attack && this.attack.elapsed >= this.attack.def.duration) {
-        this.attack = null;
-        this.state = this.onGround ? "idle" : "jump";
-      }
-      return;
-    }
-
-    if (command.press("punch")) this.startAttack("punch", gameState);
-    else if (command.press("kick")) this.startAttack("kick", gameState);
-    else if (command.press("special")) this.startAttack("special", gameState);
-
-    if (this.attack) {
-      this.updateAttack(opponent, opponentCommand, gameState);
-      return;
-    }
-
-    const left = command.hold("left");
-    const right = command.hold("right");
-    const down = command.hold("down");
-    const backInput = this.facing === 1 ? left && !right : right && !left;
-    const blockInput = command.hold("block");
-    if (command.press("up") && this.onGround && !down && !blockInput) {
-      this.vy = -860;
-      this.onGround = false;
-      this.state = "jump";
-    }
-
-    if (blockInput && !backInput) {
-      this.vx *= 0.62;
-      this.state = down ? "blockLow" : "block";
-    } else if (down && this.onGround) {
-      this.vx *= 0.58;
-      this.state = "crouch";
-    } else {
-      const speed = this.onGround ? 430 : 315;
-      if (left && !right) this.vx = -speed;
-      else if (right && !left) this.vx = speed;
-      else this.vx *= this.onGround ? 0.74 : 0.94;
-
-      if (!this.onGround) this.state = "jump";
-      else if (backInput) this.state = "backGuard";
-      else if (Math.abs(this.vx) > 42) this.state = "walk";
-      else this.state = "idle";
-    }
-
-    this.applyPhysics(dt);
-  }
-
-  updateAttack(opponent, opponentCommand, gameState) {
-    if (!this.attack) return;
-    const { def, elapsed, hitTargets, kind } = this.attack;
-
-    if (kind === "wave" && elapsed >= def.startup && !this.attack.spawned) {
-      gameState.projectiles.push(new Projectile(this));
-      this.attack.spawned = true;
-      beep("super");
-    }
-
-    if (!this.isAttackActive() || hitTargets.has(opponent)) return;
-
-    const attackBox = this.getAttackBox();
-    if (!attackBox || !rectsOverlap(attackBox, opponent.hurtbox) || opponent.invulnerable > 0) return;
-
-    const blocked = opponent.isGuarding(opponentCommand);
-    opponent.applyHit(def, this, blocked, gameState);
-    hitTargets.add(opponent);
-  }
-
-  applyPhysics(dt, frictionScale = 1) {
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
-
-    if (!this.onGround) this.vy += WORLD.gravity * dt;
-
-    if (this.y >= WORLD.floor) {
-      this.y = WORLD.floor;
-      this.vy = 0;
-      this.onGround = true;
-    } else {
-      this.onGround = false;
-    }
-
-    this.x = clamp(this.x, WORLD.leftWall, WORLD.rightWall);
-    const friction = this.onGround ? 0.86 * frictionScale : 0.985;
-    this.vx *= friction;
-    if (Math.abs(this.vx) < 7) this.vx = 0;
-  }
-
-  draw(context) {
-    const bob = Math.sin(this.anim * 7) * (this.state === "idle" ? 3 : 1);
-    const walk = Math.sin(this.anim * 13);
-    const crouch = this.state === "crouch" || this.state === "blockLow";
-    const guardingPose = this.state === "block" || this.state === "blockLow" || this.state === "backGuard";
-    const hurtLean = this.state === "hit" ? -this.facing * 13 : 0;
-    const attackProgress = this.attack ? this.attack.elapsed / this.attack.def.duration : 0;
-
-    context.save();
-    context.translate(this.x, this.y);
-    context.scale(this.facing, 1);
-
-    context.save();
-    context.globalAlpha = 0.24;
-    context.fillStyle = "#000";
-    context.beginPath();
-    context.ellipse(0, 6, 58, 14, 0, 0, Math.PI * 2);
-    context.fill();
-    context.restore();
-
-    context.translate(0, crouch ? 28 : bob);
-    context.rotate((hurtLean * Math.PI) / 360);
-
-    if (this.guardFlash > 0 || guardingPose) {
-      context.save();
-      context.globalAlpha = this.guardFlash > 0 ? 0.38 : 0.2;
-      context.strokeStyle = this.glow;
-      context.lineWidth = this.guardFlash > 0 ? 6 : 4;
-      context.beginPath();
-      context.arc(16, -92, 62, -1.15, 1.15);
-      context.stroke();
-      context.restore();
-    }
-
-    if (this.superFlash > 0) {
-      context.save();
-      context.globalAlpha = 0.5 + Math.sin(this.anim * 80) * 0.2;
-      context.strokeStyle = "#fff6c9";
-      context.lineWidth = 5;
-      context.beginPath();
-      context.arc(0, -98, 76 + this.superFlash * 50, 0, Math.PI * 2);
-      context.stroke();
-      context.restore();
-    }
-
-    const torsoY = crouch ? -86 : -108;
-    const headY = crouch ? -142 : -174;
-    const legY = crouch ? -56 : -58;
-    const armReach = this.attack && this.attack.kind === "punch" && attackProgress > 0.18 && attackProgress < 0.62 ? 45 : 0;
-    const kickReach = this.attack && this.attack.kind === "kick" && attackProgress > 0.2 && attackProgress < 0.68 ? 54 : 0;
-    const heavyReach =
-      this.attack && (this.attack.kind === "elbow" || this.attack.kind === "super") && attackProgress > 0.22 && attackProgress < 0.66
-        ? 58
-        : 0;
-    const charging = this.attack && (this.attack.kind === "wave" || this.attack.kind === "super");
-
-    context.lineCap = "round";
-    context.lineJoin = "round";
-
-    context.strokeStyle = this.dark;
-    context.lineWidth = 18;
-    context.beginPath();
-    context.moveTo(-19, legY);
-    context.lineTo(-32 - walk * 8, -16);
-    context.moveTo(19, legY);
-    context.lineTo(33 + walk * 8 + kickReach, -18 - kickReach * 0.15);
-    context.stroke();
-
-    context.strokeStyle = this.color;
-    context.lineWidth = 10;
-    context.beginPath();
-    context.moveTo(-19, legY);
-    context.lineTo(-32 - walk * 8, -16);
-    context.moveTo(19, legY);
-    context.lineTo(33 + walk * 8 + kickReach, -18 - kickReach * 0.15);
-    context.stroke();
-
-    context.fillStyle = this.dark;
-    roundRect(context, -34, torsoY - 36, 68, crouch ? 70 : 86, 8);
-    context.fill();
-    context.fillStyle = this.color;
-    roundRect(context, -28, torsoY - 33, 56, crouch ? 63 : 78, 7);
-    context.fill();
-
-    context.fillStyle = this.accent;
-    context.fillRect(-28, torsoY - 7, 56, 8);
-    context.fillRect(-18, torsoY - 31, 36, 7);
-
-    context.strokeStyle = this.dark;
-    context.lineWidth = 15;
-    context.beginPath();
-    context.moveTo(-27, torsoY - 24);
-    context.lineTo(-62, torsoY + 11);
-    context.moveTo(27, torsoY - 25);
-    context.lineTo(66 + armReach + heavyReach, torsoY - 25 + (charging ? Math.sin(this.anim * 35) * 4 : 0));
-    context.stroke();
-
-    context.strokeStyle = this.color;
-    context.lineWidth = 9;
-    context.beginPath();
-    context.moveTo(-27, torsoY - 24);
-    context.lineTo(-62, torsoY + 11);
-    context.moveTo(27, torsoY - 25);
-    context.lineTo(66 + armReach + heavyReach, torsoY - 25 + (charging ? Math.sin(this.anim * 35) * 4 : 0));
-    context.stroke();
-
-    context.fillStyle = this.accent;
-    context.beginPath();
-    context.arc(70 + armReach + heavyReach, torsoY - 25, 14 + (charging ? 3 : 0), 0, Math.PI * 2);
-    context.fill();
-    context.beginPath();
-    context.arc(-63, torsoY + 12, 12, 0, Math.PI * 2);
-    context.fill();
-
-    context.fillStyle = this.skin;
-    roundRect(context, -24, headY - 28, 48, 48, 12);
-    context.fill();
-    context.fillStyle = this.dark;
-    context.fillRect(-28, headY - 32, 56, 17);
-    context.fillStyle = "#1b1210";
-    context.fillRect(5, headY - 8, 18, 5);
-    context.fillRect(-20, headY - 8, 13, 5);
-
-    context.fillStyle = this.accent;
-    context.fillRect(24, headY - 29, 10, 43);
-    context.fillRect(-34, headY - 29, 10, 43);
-
-    if (charging) {
-      context.save();
-      context.globalAlpha = 0.7;
-      context.strokeStyle = this.glow;
-      context.lineWidth = 3;
-      for (let i = 0; i < 3; i += 1) {
-        context.beginPath();
-        context.arc(72 + i * 7, torsoY - 25, 20 + i * 13 + Math.sin(this.anim * 14) * 4, 0, Math.PI * 2);
-        context.stroke();
-      }
-      context.restore();
-    }
-
-    if (this.state === "ko") {
-      context.save();
-      context.globalAlpha = 0.18;
-      context.fillStyle = "#fff";
-      context.fillRect(-34, headY - 5, 68, 5);
-      context.restore();
-    }
-
-    context.restore();
+      break;
+    case "matchEnd":
+      mode = "lobby";
+      currentRoom = null;
+      currentSeat = null;
+      showAnnouncement(message.message || "对局结束", true);
+      showLobby(message.message || "对局结束。");
+      renderRoomControls();
+      sendSocket({ type: "listRooms" });
+      break;
+    case "error":
+      showLobby(message.message || "网络错误。");
+      break;
+    default:
+      break;
   }
 }
 
-class Projectile {
-  constructor(owner) {
-    this.owner = owner;
-    this.x = owner.x + owner.facing * 74;
-    this.y = owner.y - 112;
-    this.vx = owner.facing * 640;
-    this.life = 1.55;
-    this.w = 70;
-    this.h = 42;
-    this.color = owner.glow;
-    this.hit = false;
+function startOfflinePractice() {
+  initAudio();
+  sendSocket({ type: "leaveRoom" });
+  currentRoom = null;
+  currentSeat = null;
+  mode = "offline";
+  offlineGame.resetMatch();
+  latestSnapshot = offlineGame.consumeSnapshot();
+  processEvents(latestSnapshot.events);
+  hideLobby();
+  updateDeckStatus();
+}
+
+function showLobby(message) {
+  mode = mode === "online" ? "lobby" : mode;
+  lobbyPanel.classList.remove("is-hidden");
+  lobbyMessage.textContent = message || LOBBY_DEFAULT_MESSAGE;
+  renderRoomControls();
+  updateDeckStatus();
+}
+
+function hideLobby() {
+  lobbyPanel.classList.add("is-hidden");
+  updateDeckStatus();
+}
+
+function setConnectionStatus(state) {
+  connectionState = state;
+  connectionStatus.textContent = CONNECTION_LABELS[state] || state;
+  refreshRoomsButton.disabled = state !== "online";
+  if (!currentRoom) createRoomButton.disabled = state !== "online";
+}
+
+function renderRoomControls() {
+  const inWaitingRoom = currentRoom && mode !== "online";
+  createRoomButton.textContent = inWaitingRoom ? "离开房间" : "创建房间";
+  createRoomButton.disabled = connectionState !== "online" && !inWaitingRoom;
+}
+
+function renderRooms(rooms) {
+  if (!rooms.length) {
+    roomList.innerHTML = '<div class="room-empty">暂无等待中的房间。创建一个房间等待对手加入。</div>';
+    renderRoomControls();
+    return;
   }
 
-  get box() {
-    return { x: this.x - this.w / 2, y: this.y - this.h / 2, w: this.w, h: this.h };
-  }
+  roomList.innerHTML = rooms
+    .map((room) => {
+      const joinable = room.status === "waiting" && room.players < room.capacity && (!currentRoom || currentRoom.id !== room.id);
+      const label = room.status === "waiting" ? "等待中" : "对战中";
+      return `
+        <div class="room-row">
+          <div>
+            <div class="room-title">${escapeHtml(room.name)}</div>
+            <div class="room-meta">${room.players}/${room.capacity} 人</div>
+          </div>
+          <div class="room-badge">${label}</div>
+          <button type="button" data-room-id="${escapeHtml(room.id)}" ${joinable ? "" : "disabled"}>加入</button>
+        </div>
+      `;
+    })
+    .join("");
+  renderRoomControls();
+}
 
-  update(dt) {
-    this.x += this.vx * dt;
-    this.life -= dt;
-    return this.life > 0 && this.x > -120 && this.x < WORLD.width + 120 && !this.hit;
-  }
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
 
-  draw(context) {
-    context.save();
-    context.translate(this.x, this.y);
-    context.scale(Math.sign(this.vx), 1);
-    const gradient = context.createLinearGradient(-42, 0, 54, 0);
-    gradient.addColorStop(0, "rgba(255,255,255,0.05)");
-    gradient.addColorStop(0.45, this.color);
-    gradient.addColorStop(1, "rgba(255,244,190,0.9)");
-    context.fillStyle = gradient;
-    context.beginPath();
-    context.moveTo(-44, 0);
-    context.quadraticCurveTo(-18, -30, 38, -16);
-    context.quadraticCurveTo(66, -4, 42, 15);
-    context.quadraticCurveTo(-12, 32, -44, 0);
-    context.fill();
-    context.globalAlpha = 0.45;
-    context.strokeStyle = "#fff7d4";
-    context.lineWidth = 3;
-    context.beginPath();
-    context.moveTo(-26, -8);
-    context.quadraticCurveTo(8, -22, 46, -6);
-    context.stroke();
-    context.restore();
+function maybeSendInput(now) {
+  const input = makeHumanInput(P1_CONTROLS, true);
+  const serialized = JSON.stringify(input);
+  if (serialized !== lastSentInput || now - lastInputSentAt > 80) {
+    sendSocket({ type: "input", input });
+    lastSentInput = serialized;
+    lastInputSentAt = now;
   }
 }
 
-class Particle {
-  constructor(x, y, color, vx, vy, life, size) {
-    this.x = x;
-    this.y = y;
-    this.color = color;
-    this.vx = vx;
-    this.vy = vy;
-    this.life = life;
-    this.maxLife = life;
-    this.size = size;
-  }
-
-  update(dt) {
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
-    this.vy += 760 * dt;
-    this.life -= dt;
-    return this.life > 0;
-  }
-
-  draw(context) {
-    context.save();
-    context.globalAlpha = clamp(this.life / this.maxLife, 0, 1);
-    context.fillStyle = this.color;
-    context.fillRect(this.x, this.y, this.size, this.size);
-    context.restore();
+function processEvents(events = []) {
+  for (const event of events) {
+    if (event.type === "announce") showAnnouncement(event.text, event.show);
+    if (event.type === "sound") beep(event.name);
   }
 }
 
-class Game {
-  constructor() {
-    this.p1 = new Fighter({
-      name: "Riven",
-      shortName: "RIVEN",
-      x: 330,
-      facing: 1,
-      color: "#c7352d",
-      dark: "#35110d",
-      accent: "#f0b64f",
-      skin: "#d9a178",
-      glow: "#ffcf5a",
-      controls: P1_CONTROLS,
-    });
-    this.p2 = new Fighter({
-      name: "Kairo",
-      shortName: "KAIRO",
-      x: 950,
-      facing: -1,
-      color: "#287a76",
-      dark: "#0d3130",
-      accent: "#e9f4d6",
-      skin: "#b98466",
-      glow: "#4ee4d0",
-      controls: P2_CONTROLS,
-    });
-    this.cpu = new CPUCommand();
-    this.p2HumanTimer = 0;
-    this.projectiles = [];
-    this.particles = [];
-    this.round = 1;
-    this.timer = 99;
-    this.roundState = "ready";
-    this.stateClock = 1.25;
-    this.hitStop = 0;
-    this.cameraShake = 0;
-    this.flash = 0;
-    this.paused = false;
-    this.matchOver = false;
-    this.message = "ROUND 1";
-    this.announce("ROUND 1", true);
+function showAnnouncement(text, show) {
+  announcer.textContent = text;
+  announcer.classList.toggle("is-visible", show);
+  window.clearTimeout(announcementTimer);
+  if (show) {
+    announcementTimer = window.setTimeout(() => {
+      announcer.classList.remove("is-visible");
+    }, 940);
+  }
+}
+
+function updateDeckStatus() {
+  if (mode === "online") {
+    matchStatus.textContent = currentSeat === 1 ? "联机一号" : "联机二号";
+    startButton.textContent = "对战中";
+    return;
   }
 
-  resetMatch() {
-    this.p1.wins = 0;
-    this.p2.wins = 0;
-    this.p1.meter = 0;
-    this.p2.meter = 0;
-    this.round = 1;
-    this.matchOver = false;
-    this.startRound();
+  if (mode === "offline") {
+    matchStatus.textContent = "单机练习";
+    startButton.textContent = latestSnapshot.matchOver ? "再来一局" : latestSnapshot.paused ? "继续" : "暂停";
+    return;
   }
 
-  startRound() {
-    this.timer = 99;
-    this.projectiles = [];
-    this.particles = [];
-    this.p1.resetForRound(330, 1);
-    this.p2.resetForRound(950, -1);
-    this.roundState = "ready";
-    this.stateClock = 1.1;
-    this.message = `ROUND ${this.round}`;
-    this.announce(this.message, true);
-    beep("start");
+  matchStatus.textContent = currentRoom ? "等待中" : "大厅";
+  startButton.textContent = "开始";
+}
+
+function resizeCanvas() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = WORLD.width * dpr;
+  canvas.height = WORLD.height * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+let lastTime = performance.now();
+function frame(now) {
+  const dt = Math.min(0.032, (now - lastTime) / 1000);
+  lastTime = now;
+
+  if (mode === "offline") {
+    if (justPressed.has("KeyR")) offlineGame.resetMatch();
+    if (justPressed.has("KeyP")) offlineGame.togglePaused();
+
+    const p1Input = makeHumanInput(P1_CONTROLS, true);
+    const p2Input = makeHumanInput(P2_CONTROLS, false);
+    offlineGame.update(dt, p1Input, p2Input);
+    latestSnapshot = offlineGame.consumeSnapshot();
+    processEvents(latestSnapshot.events);
+  } else if (mode === "online") {
+    if (justPressed.has("KeyR")) sendSocket({ type: "restart" });
+    maybeSendInput(now);
   }
 
-  update(dt) {
-    if (justPressed.has("KeyR")) this.resetMatch();
-    if (justPressed.has("KeyP")) this.paused = !this.paused;
-    if (this.paused) return;
+  drawGame(latestSnapshot);
+  justPressed.clear();
+  touchPressed.clear();
+  updateDeckStatus();
+  requestAnimationFrame(frame);
+}
 
-    this.flash = Math.max(0, this.flash - dt);
-    this.cameraShake = Math.max(0, this.cameraShake - 42 * dt);
-    this.p2HumanTimer = Math.max(0, this.p2HumanTimer - dt);
-
-    if (this.hitStop > 0) {
-      this.hitStop = Math.max(0, this.hitStop - dt);
-      return;
-    }
-
-    if (this.roundState !== "fight") {
-      this.stateClock -= dt;
-      if (this.roundState === "ready" && this.stateClock <= 0) {
-        this.roundState = "fight";
-        this.stateClock = 0;
-        this.announce("FIGHT", true);
-      } else if (this.roundState === "over" && this.stateClock <= 0) {
-        if (this.matchOver) {
-          this.announce(this.p1.wins > this.p2.wins ? "RIVEN WINS" : "KAIRO WINS", true);
-        } else {
-          this.round += 1;
-          this.startRound();
-        }
-      }
-      this.updateParticles(dt);
-      return;
-    }
-
-    this.timer = Math.max(0, this.timer - dt);
-
-    const p1Command = makeHumanCommand(P1_CONTROLS, true);
-    let p2Command = makeHumanCommand(P2_CONTROLS, false);
-    if (this.p2HumanTimer <= 0) {
-      this.cpu.update(dt, this.p2, this.p1);
-      p2Command = this.cpu;
-    }
-
-    this.p1.update(dt, this.p2, p1Command, p2Command, this);
-    this.p2.update(dt, this.p1, p2Command, p1Command, this);
-    this.resolveOverlap();
-    this.updateProjectiles(dt, p1Command, p2Command);
-    this.updateParticles(dt);
-
-    if (this.p1.health <= 0 || this.p2.health <= 0 || this.timer <= 0) {
-      this.finishRound();
-    }
+function drawGame(gameState) {
+  ctx.save();
+  if (gameState.cameraShake > 0) {
+    ctx.translate((Math.random() - 0.5) * gameState.cameraShake, (Math.random() - 0.5) * gameState.cameraShake);
   }
+  drawStage(ctx, gameState.timer);
+  gameState.projectiles.forEach((projectile) => drawProjectile(ctx, projectile));
+  drawFighter(ctx, gameState.p1);
+  drawFighter(ctx, gameState.p2);
+  gameState.particles.forEach((particle) => drawParticle(ctx, particle));
+  ctx.restore();
 
-  resolveOverlap() {
-    const gap = this.p2.x - this.p1.x;
-    const minGap = 86;
-    if (Math.abs(gap) >= minGap) return;
-
-    const push = (minGap - Math.abs(gap)) / 2;
-    const direction = gap >= 0 ? 1 : -1;
-    this.p1.x = clamp(this.p1.x - direction * push, WORLD.leftWall, WORLD.rightWall);
-    this.p2.x = clamp(this.p2.x + direction * push, WORLD.leftWall, WORLD.rightWall);
-  }
-
-  updateProjectiles(dt, p1Command, p2Command) {
-    for (const projectile of this.projectiles) {
-      const target = projectile.owner === this.p1 ? this.p2 : this.p1;
-      const targetCommand = target === this.p1 ? p1Command : p2Command;
-      if (!projectile.hit && rectsOverlap(projectile.box, target.hurtbox) && target.invulnerable <= 0) {
-        const blocked = target.isGuarding(targetCommand);
-        target.applyHit(
-          {
-            ...ATTACKS.elbow,
-            damage: 11,
-            chip: 2.2,
-            stun: 0.28,
-            blockStun: 0.18,
-            knock: 290,
-            meter: 10,
-            shake: 11,
-          },
-          projectile.owner,
-          blocked,
-          this
-        );
-        projectile.hit = true;
-      }
-    }
-
-    for (let i = 0; i < this.projectiles.length; i += 1) {
-      for (let j = i + 1; j < this.projectiles.length; j += 1) {
-        const a = this.projectiles[i];
-        const b = this.projectiles[j];
-        if (a.owner !== b.owner && rectsOverlap(a.box, b.box)) {
-          a.hit = true;
-          b.hit = true;
-          this.addGuardSpark((a.x + b.x) / 2, (a.y + b.y) / 2);
-        }
-      }
-    }
-
-    this.projectiles = this.projectiles.filter((projectile) => projectile.update(dt));
-  }
-
-  updateParticles(dt) {
-    this.particles = this.particles.filter((particle) => particle.update(dt));
-  }
-
-  finishRound() {
-    if (this.roundState !== "fight") return;
-    let winner = null;
-    if (this.p1.health > this.p2.health) winner = this.p1;
-    if (this.p2.health > this.p1.health) winner = this.p2;
-
-    if (winner) winner.wins += 1;
-    this.roundState = "over";
-    this.stateClock = 2.4;
-    this.matchOver = this.p1.wins >= 2 || this.p2.wins >= 2 || this.round >= 3;
-
-    const text = winner ? `${winner.shortName} TAKES IT` : "DOUBLE KO";
-    this.announce(text, true);
-    beep("win");
-  }
-
-  announce(text, show) {
-    announcer.textContent = text;
-    announcer.classList.toggle("is-visible", show);
-    clearTimeout(this.announceTimer);
-    if (show) {
-      this.announceTimer = setTimeout(() => {
-        announcer.classList.remove("is-visible");
-      }, 940);
-    }
-  }
-
-  addHitSpark(x, y, direction, heavy) {
-    const amount = heavy ? 26 : 16;
-    for (let i = 0; i < amount; i += 1) {
-      const speed = (heavy ? 420 : 300) * (0.35 + Math.random());
-      const angle = (Math.random() - 0.5) * 1.5 + (direction === 1 ? 0 : Math.PI);
-      this.particles.push(
-        new Particle(
-          x,
-          y,
-          Math.random() < 0.55 ? "#fff3bd" : "#ff533f",
-          Math.cos(angle) * speed,
-          Math.sin(angle) * speed - Math.random() * 170,
-          0.22 + Math.random() * 0.18,
-          heavy ? 6 : 4
-        )
-      );
-    }
-  }
-
-  addGuardSpark(x, y) {
-    for (let i = 0; i < 14; i += 1) {
-      const angle = (Math.PI * 2 * i) / 14;
-      this.particles.push(
-        new Particle(
-          x,
-          y,
-          i % 2 ? "#4ee4d0" : "#f0b64f",
-          Math.cos(angle) * (130 + Math.random() * 90),
-          Math.sin(angle) * (130 + Math.random() * 90),
-          0.18 + Math.random() * 0.16,
-          4
-        )
-      );
-    }
-  }
-
-  draw() {
+  if (gameState.flash > 0) {
     ctx.save();
-    if (this.cameraShake > 0) {
-      ctx.translate((Math.random() - 0.5) * this.cameraShake, (Math.random() - 0.5) * this.cameraShake);
-    }
-    drawStage(ctx, this.timer);
-    this.projectiles.forEach((projectile) => projectile.draw(ctx));
-    this.p1.draw(ctx);
-    this.p2.draw(ctx);
-    this.particles.forEach((particle) => particle.draw(ctx));
+    ctx.globalAlpha = gameState.flash * 1.8;
+    ctx.fillStyle = "#fff2b8";
+    ctx.fillRect(0, 0, WORLD.width, WORLD.height);
     ctx.restore();
+  }
 
-    if (this.flash > 0) {
-      ctx.save();
-      ctx.globalAlpha = this.flash * 1.8;
-      ctx.fillStyle = "#fff2b8";
-      ctx.fillRect(0, 0, WORLD.width, WORLD.height);
-      ctx.restore();
-    }
+  drawHud(ctx, gameState);
 
-    drawHud(ctx, this);
-
-    if (this.paused) {
-      ctx.save();
-      ctx.fillStyle = "rgba(0,0,0,0.55)";
-      ctx.fillRect(0, 0, WORLD.width, WORLD.height);
-      ctx.fillStyle = "#f6ead0";
-      ctx.font = "72px Impact, Haettenschweiler, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("PAUSED", WORLD.width / 2, WORLD.height / 2);
-      ctx.restore();
-    }
+  if (gameState.paused) {
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+    ctx.fillStyle = "#f6ead0";
+    ctx.font = "72px Impact, Haettenschweiler, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("已暂停", WORLD.width / 2, WORLD.height / 2);
+    ctx.restore();
   }
 }
 
@@ -1095,9 +453,9 @@ function drawStage(context, timer) {
 
   context.save();
   context.globalAlpha = 0.85;
-  drawNeonSign(context, 112, 150, "24H", "#f0b64f");
-  drawNeonSign(context, 1015, 176, "VS", "#42cab8");
-  drawNeonSign(context, 555, 118, "IRON", "#c7352d");
+  drawNeonSign(context, 112, 150, "全天", "#f0b64f");
+  drawNeonSign(context, 1015, 176, "对决", "#42cab8");
+  drawNeonSign(context, 555, 118, "钢铁", "#c7352d");
   context.restore();
 
   context.save();
@@ -1149,6 +507,190 @@ function drawNeonSign(context, x, y, text, color) {
   context.restore();
 }
 
+function drawFighter(context, fighter) {
+  const bob = Math.sin(fighter.anim * 7) * (fighter.state === "idle" ? 3 : 1);
+  const walk = Math.sin(fighter.anim * 13);
+  const crouch = fighter.state === "crouch" || fighter.state === "blockLow";
+  const guardingPose = fighter.state === "block" || fighter.state === "blockLow" || fighter.state === "backGuard";
+  const hurtLean = fighter.state === "hit" ? -fighter.facing * 13 : 0;
+  const attackProgress = fighter.attack ? fighter.attack.elapsed / fighter.attack.duration : 0;
+
+  context.save();
+  context.translate(fighter.x, fighter.y);
+  context.scale(fighter.facing, 1);
+
+  context.save();
+  context.globalAlpha = 0.24;
+  context.fillStyle = "#000";
+  context.beginPath();
+  context.ellipse(0, 6, 58, 14, 0, 0, Math.PI * 2);
+  context.fill();
+  context.restore();
+
+  context.translate(0, crouch ? 28 : bob);
+  context.rotate((hurtLean * Math.PI) / 360);
+
+  if (fighter.guardFlash > 0 || guardingPose) {
+    context.save();
+    context.globalAlpha = fighter.guardFlash > 0 ? 0.38 : 0.2;
+    context.strokeStyle = fighter.glow;
+    context.lineWidth = fighter.guardFlash > 0 ? 6 : 4;
+    context.beginPath();
+    context.arc(16, -92, 62, -1.15, 1.15);
+    context.stroke();
+    context.restore();
+  }
+
+  if (fighter.superFlash > 0) {
+    context.save();
+    context.globalAlpha = 0.5 + Math.sin(fighter.anim * 80) * 0.2;
+    context.strokeStyle = "#fff6c9";
+    context.lineWidth = 5;
+    context.beginPath();
+    context.arc(0, -98, 76 + fighter.superFlash * 50, 0, Math.PI * 2);
+    context.stroke();
+    context.restore();
+  }
+
+  const torsoY = crouch ? -86 : -108;
+  const headY = crouch ? -142 : -174;
+  const legY = crouch ? -56 : -58;
+  const armReach = fighter.attack && fighter.attack.kind === "punch" && attackProgress > 0.18 && attackProgress < 0.62 ? 45 : 0;
+  const kickReach = fighter.attack && fighter.attack.kind === "kick" && attackProgress > 0.2 && attackProgress < 0.68 ? 54 : 0;
+  const heavyReach =
+    fighter.attack && (fighter.attack.kind === "elbow" || fighter.attack.kind === "super") && attackProgress > 0.22 && attackProgress < 0.66
+      ? 58
+      : 0;
+  const charging = fighter.attack && (fighter.attack.kind === "wave" || fighter.attack.kind === "super");
+
+  context.lineCap = "round";
+  context.lineJoin = "round";
+
+  context.strokeStyle = fighter.dark;
+  context.lineWidth = 18;
+  context.beginPath();
+  context.moveTo(-19, legY);
+  context.lineTo(-32 - walk * 8, -16);
+  context.moveTo(19, legY);
+  context.lineTo(33 + walk * 8 + kickReach, -18 - kickReach * 0.15);
+  context.stroke();
+
+  context.strokeStyle = fighter.color;
+  context.lineWidth = 10;
+  context.beginPath();
+  context.moveTo(-19, legY);
+  context.lineTo(-32 - walk * 8, -16);
+  context.moveTo(19, legY);
+  context.lineTo(33 + walk * 8 + kickReach, -18 - kickReach * 0.15);
+  context.stroke();
+
+  context.fillStyle = fighter.dark;
+  roundRect(context, -34, torsoY - 36, 68, crouch ? 70 : 86, 8);
+  context.fill();
+  context.fillStyle = fighter.color;
+  roundRect(context, -28, torsoY - 33, 56, crouch ? 63 : 78, 7);
+  context.fill();
+
+  context.fillStyle = fighter.accent;
+  context.fillRect(-28, torsoY - 7, 56, 8);
+  context.fillRect(-18, torsoY - 31, 36, 7);
+
+  context.strokeStyle = fighter.dark;
+  context.lineWidth = 15;
+  context.beginPath();
+  context.moveTo(-27, torsoY - 24);
+  context.lineTo(-62, torsoY + 11);
+  context.moveTo(27, torsoY - 25);
+  context.lineTo(66 + armReach + heavyReach, torsoY - 25 + (charging ? Math.sin(fighter.anim * 35) * 4 : 0));
+  context.stroke();
+
+  context.strokeStyle = fighter.color;
+  context.lineWidth = 9;
+  context.beginPath();
+  context.moveTo(-27, torsoY - 24);
+  context.lineTo(-62, torsoY + 11);
+  context.moveTo(27, torsoY - 25);
+  context.lineTo(66 + armReach + heavyReach, torsoY - 25 + (charging ? Math.sin(fighter.anim * 35) * 4 : 0));
+  context.stroke();
+
+  context.fillStyle = fighter.accent;
+  context.beginPath();
+  context.arc(70 + armReach + heavyReach, torsoY - 25, 14 + (charging ? 3 : 0), 0, Math.PI * 2);
+  context.fill();
+  context.beginPath();
+  context.arc(-63, torsoY + 12, 12, 0, Math.PI * 2);
+  context.fill();
+
+  context.fillStyle = fighter.skin;
+  roundRect(context, -24, headY - 28, 48, 48, 12);
+  context.fill();
+  context.fillStyle = fighter.dark;
+  context.fillRect(-28, headY - 32, 56, 17);
+  context.fillStyle = "#1b1210";
+  context.fillRect(5, headY - 8, 18, 5);
+  context.fillRect(-20, headY - 8, 13, 5);
+
+  context.fillStyle = fighter.accent;
+  context.fillRect(24, headY - 29, 10, 43);
+  context.fillRect(-34, headY - 29, 10, 43);
+
+  if (charging) {
+    context.save();
+    context.globalAlpha = 0.7;
+    context.strokeStyle = fighter.glow;
+    context.lineWidth = 3;
+    for (let i = 0; i < 3; i += 1) {
+      context.beginPath();
+      context.arc(72 + i * 7, torsoY - 25, 20 + i * 13 + Math.sin(fighter.anim * 14) * 4, 0, Math.PI * 2);
+      context.stroke();
+    }
+    context.restore();
+  }
+
+  if (fighter.state === "ko") {
+    context.save();
+    context.globalAlpha = 0.18;
+    context.fillStyle = "#fff";
+    context.fillRect(-34, headY - 5, 68, 5);
+    context.restore();
+  }
+
+  context.restore();
+}
+
+function drawProjectile(context, projectile) {
+  context.save();
+  context.translate(projectile.x, projectile.y);
+  context.scale(Math.sign(projectile.vx), 1);
+  const gradient = context.createLinearGradient(-42, 0, 54, 0);
+  gradient.addColorStop(0, "rgba(255,255,255,0.05)");
+  gradient.addColorStop(0.45, projectile.color);
+  gradient.addColorStop(1, "rgba(255,244,190,0.9)");
+  context.fillStyle = gradient;
+  context.beginPath();
+  context.moveTo(-44, 0);
+  context.quadraticCurveTo(-18, -30, 38, -16);
+  context.quadraticCurveTo(66, -4, 42, 15);
+  context.quadraticCurveTo(-12, 32, -44, 0);
+  context.fill();
+  context.globalAlpha = 0.45;
+  context.strokeStyle = "#fff7d4";
+  context.lineWidth = 3;
+  context.beginPath();
+  context.moveTo(-26, -8);
+  context.quadraticCurveTo(8, -22, 46, -6);
+  context.stroke();
+  context.restore();
+}
+
+function drawParticle(context, particle) {
+  context.save();
+  context.globalAlpha = clamp(particle.life / particle.maxLife, 0, 1);
+  context.fillStyle = particle.color;
+  context.fillRect(particle.x, particle.y, particle.size, particle.size);
+  context.restore();
+}
+
 function drawHud(context, gameState) {
   const leftHealth = gameState.p1.health / 100;
   const rightHealth = gameState.p2.health / 100;
@@ -1184,11 +726,11 @@ function drawHud(context, gameState) {
   if (gameState.p1.combo >= 2) drawCombo(context, 96, 152, gameState.p1.combo, "#f0b64f");
   if (gameState.p2.combo >= 2) drawCombo(context, WORLD.width - 96, 152, gameState.p2.combo, "#42cab8", true);
 
-  if (gameState.p2HumanTimer <= 0) {
+  if (gameState.mode !== "online" && gameState.p2HumanTimer <= 0) {
     context.font = "18px Impact, Haettenschweiler, sans-serif";
     context.fillStyle = "rgba(246,234,208,0.72)";
     context.textAlign = "right";
-    context.fillText("CPU", WORLD.width - 54, 104);
+    context.fillText("电脑", WORLD.width - 54, 104);
   }
 
   context.restore();
@@ -1236,29 +778,8 @@ function drawCombo(context, x, y, combo, color, right = false) {
   context.fillStyle = color;
   context.shadowColor = color;
   context.shadowBlur = 16;
-  context.fillText(`${combo} HIT`, x, y);
+  context.fillText(`${combo} 连击`, x, y);
   context.restore();
-}
-
-const game = new Game();
-window.ironCircuitGame = game;
-
-function resizeCanvas() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = WORLD.width * dpr;
-  canvas.height = WORLD.height * dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-}
-
-let lastTime = performance.now();
-function frame(now) {
-  const dt = Math.min(0.032, (now - lastTime) / 1000);
-  lastTime = now;
-  game.update(dt);
-  game.draw();
-  justPressed.clear();
-  touchPressed.clear();
-  requestAnimationFrame(frame);
 }
 
 window.addEventListener("resize", resizeCanvas);
@@ -1266,7 +787,7 @@ window.addEventListener("keydown", (event) => {
   initAudio();
   if (!keys.has(event.code)) justPressed.add(event.code);
   keys.add(event.code);
-  if (p2ControlCodes.has(event.code)) game.p2HumanTimer = 18;
+  if (mode === "offline" && p2ControlCodes.has(event.code)) offlineGame.markP2Human();
   if (BLOCKED_KEYS.has(event.code)) event.preventDefault();
 });
 
@@ -1277,19 +798,56 @@ window.addEventListener("keyup", (event) => {
 
 startButton.addEventListener("click", () => {
   initAudio();
-  if (game.matchOver) game.resetMatch();
-  else game.paused = !game.paused;
+  if (mode === "lobby") {
+    startOfflinePractice();
+  } else if (mode === "offline") {
+    if (latestSnapshot.matchOver) offlineGame.resetMatch();
+    else offlineGame.togglePaused();
+  }
 });
 
 resetButton.addEventListener("click", () => {
   initAudio();
-  game.resetMatch();
+  if (mode === "online") {
+    sendSocket({ type: "restart" });
+  } else if (mode === "offline") {
+    offlineGame.resetMatch();
+  }
 });
 
 muteButton.addEventListener("click", () => {
   muted = !muted;
   muteButton.classList.toggle("is-muted", muted);
-  muteButton.textContent = muted ? "M" : "S";
+  muteButton.textContent = muted ? "静" : "音";
+});
+
+practiceButton.addEventListener("click", startOfflinePractice);
+
+createRoomButton.addEventListener("click", () => {
+  initAudio();
+  if (currentRoom && mode !== "online") {
+    sendSocket({ type: "leaveRoom" });
+    currentRoom = null;
+    currentSeat = null;
+    showLobby("你已离开房间。");
+    return;
+  }
+  if (sendSocket({ type: "createRoom" })) {
+    showLobby("正在创建房间...");
+  } else {
+    showLobby("联机不可用，可以先玩单机练习。");
+  }
+});
+
+refreshRoomsButton.addEventListener("click", () => {
+  sendSocket({ type: "listRooms" });
+});
+
+roomList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-room-id]");
+  if (!button || button.disabled) return;
+  initAudio();
+  sendSocket({ type: "joinRoom", roomId: button.dataset.roomId });
 });
 
 document.querySelectorAll("[data-touch]").forEach((button) => {
@@ -1326,4 +884,6 @@ document.querySelectorAll("[data-touch]").forEach((button) => {
 });
 
 resizeCanvas();
+connectSocket();
+showLobby(LOBBY_DEFAULT_MESSAGE);
 requestAnimationFrame(frame);

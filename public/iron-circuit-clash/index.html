@@ -1,30 +1,44 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Iron Circuit Clash</title>
+    <title>钢铁电路对决</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="styles.css?v=20260514-backtap" />
   </head>
   <body>
     <main class="arcade-shell">
-      <section class="cabinet" aria-label="Iron Circuit Clash">
+      <section class="cabinet" aria-label="钢铁电路对决">
         <div class="marquee" aria-hidden="true">
-          <span>IRON</span>
-          <span class="marquee-mark">CIRCUIT</span>
-          <span>CLASH</span>
+          <span>钢铁</span>
+          <span class="marquee-mark">电路</span>
+          <span>对决</span>
         </div>
 
         <div class="screen">
-          <canvas id="game" width="1280" height="720" aria-label="Fighting game stage"></canvas>
+          <canvas id="game" width="1280" height="720" aria-label="格斗游戏舞台"></canvas>
           <div id="announcer" class="announcer" aria-live="polite"></div>
+          <div id="lobbyPanel" class="lobby-panel">
+            <div class="lobby-card">
+              <p id="connectionStatus" class="lobby-kicker">连接中</p>
+              <h1>联机大厅</h1>
+              <p id="lobbyMessage" class="lobby-message">创建房间，或加入一个等待中的对手。</p>
+              <div class="lobby-actions">
+                <button id="practiceButton" type="button">单机练习</button>
+                <button id="createRoomButton" type="button">创建房间</button>
+                <button id="refreshRoomsButton" type="button">刷新列表</button>
+              </div>
+              <div id="roomList" class="room-list" aria-live="polite"></div>
+            </div>
+          </div>
         </div>
 
         <div class="control-deck">
-          <button id="startButton" class="coin-button" type="button">START</button>
-          <button id="resetButton" class="round-button" type="button" aria-label="Restart match">R</button>
-          <button id="muteButton" class="round-button" type="button" aria-label="Toggle sound">S</button>
+          <button id="startButton" class="coin-button" type="button">开始</button>
+          <button id="resetButton" class="round-button" type="button" aria-label="重新开始对局">重</button>
+          <button id="muteButton" class="round-button" type="button" aria-label="切换音效">音</button>
+          <div id="matchStatus" class="match-status">大厅</div>
           <div class="deck-lights" aria-hidden="true">
             <i></i>
             <i></i>
@@ -33,22 +47,22 @@
           </div>
         </div>
 
-        <div class="touch-controls" aria-label="Player one touch controls">
+        <div class="touch-controls" aria-label="一号玩家触控操作">
           <div class="touch-pad">
-            <button data-touch="left" aria-label="Move left">‹</button>
-            <button data-touch="up" aria-label="Jump">⌃</button>
-            <button data-touch="right" aria-label="Move right">›</button>
-            <button data-touch="block" aria-label="Guard">◼</button>
+            <button data-touch="left" aria-label="向左移动">‹</button>
+            <button data-touch="up" aria-label="跳跃">⌃</button>
+            <button data-touch="right" aria-label="向右移动">›</button>
+            <button data-touch="block" aria-label="防御">防</button>
           </div>
           <div class="touch-actions">
-            <button data-touch="punch" aria-label="Punch">I</button>
-            <button data-touch="kick" aria-label="Kick">II</button>
-            <button data-touch="special" aria-label="Special">III</button>
+            <button data-touch="punch" aria-label="轻拳">拳</button>
+            <button data-touch="kick" aria-label="重踢">踢</button>
+            <button data-touch="special" aria-label="必杀">必</button>
           </div>
         </div>
       </section>
     </main>
 
-    <script src="game.js?v=20260514-backtap" defer></script>
+    <script type="module" src="game.js?v=20260514-online"></script>
   </body>
 </html>

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Iron Circuit Clash",
-  description: "街机格斗小游戏",
+  title: "钢铁电路对决",
+  description: "街机联机格斗小游戏",
 };
 
 export default function IronCircuitClashPage() {
@@ -10,7 +10,7 @@ export default function IronCircuitClashPage() {
     <main className="min-h-screen bg-[#080705]">
       <iframe
         src="/iron-circuit-clash/index.html"
-        title="Iron Circuit Clash"
+        title="钢铁电路对决"
         className="block h-screen w-full border-0"
         allow="fullscreen; gamepad"
         allowFullScreen
