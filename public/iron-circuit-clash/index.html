@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Iron Circuit Clash</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="styles.css?v=20260514-backtap" />
+  </head>
+  <body>
+    <main class="arcade-shell">
+      <section class="cabinet" aria-label="Iron Circuit Clash">
+        <div class="marquee" aria-hidden="true">
+          <span>IRON</span>
+          <span class="marquee-mark">CIRCUIT</span>
+          <span>CLASH</span>
+        </div>
+
+        <div class="screen">
+          <canvas id="game" width="1280" height="720" aria-label="Fighting game stage"></canvas>
+          <div id="announcer" class="announcer" aria-live="polite"></div>
+        </div>
+
+        <div class="control-deck">
+          <button id="startButton" class="coin-button" type="button">START</button>
+          <button id="resetButton" class="round-button" type="button" aria-label="Restart match">R</button>
+          <button id="muteButton" class="round-button" type="button" aria-label="Toggle sound">S</button>
+          <div class="deck-lights" aria-hidden="true">
+            <i></i>
+            <i></i>
+            <i></i>
+            <i></i>
+          </div>
+        </div>
+
+        <div class="touch-controls" aria-label="Player one touch controls">
+          <div class="touch-pad">
+            <button data-touch="left" aria-label="Move left">‹</button>
+            <button data-touch="up" aria-label="Jump">⌃</button>
+            <button data-touch="right" aria-label="Move right">›</button>
+            <button data-touch="block" aria-label="Guard">◼</button>
+          </div>
+          <div class="touch-actions">
+            <button data-touch="punch" aria-label="Punch">I</button>
+            <button data-touch="kick" aria-label="Kick">II</button>
+            <button data-touch="special" aria-label="Special">III</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="game.js?v=20260514-backtap" defer></script>
+  </body>
+</html>
