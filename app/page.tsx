@@ -31,12 +31,20 @@ export default function Home() {
           </li>
         </ul>
 
-        <Link
-          href="/books"
-          className="border border-black px-8 py-2.5 text-xs tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
-        >
-          BOOKS →
-        </Link>
+        <div className="flex gap-4">
+          <Link
+            href="/books"
+            className="border border-black px-8 py-2.5 text-xs tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
+          >
+            BOOKS →
+          </Link>
+          <Link
+            href="/photos"
+            className="border border-black px-8 py-2.5 text-xs tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
+          >
+            PHOTOS →
+          </Link>
+        </div>
 
         <div className="h-px w-8 bg-neutral-200" />
       </div>
