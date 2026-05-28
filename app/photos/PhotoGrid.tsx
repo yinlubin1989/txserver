@@ -2,20 +2,25 @@
 
 import { useState } from "react";
 
-export default function PhotoGrid({ photos }: { photos: string[] }) {
-  const [selected, setSelected] = useState<string | null>(null);
+interface Photo {
+  name: string;
+  url: string;
+}
+
+export default function PhotoGrid({ photos }: { photos: Photo[] }) {
+  const [selected, setSelected] = useState<Photo | null>(null);
 
   return (
     <>
       <div className="columns-2 gap-3 sm:columns-3 sm:gap-4 lg:columns-4">
         {photos.map((photo, i) => (
           <button
-            key={photo}
+            key={photo.name}
             onClick={() => setSelected(photo)}
             className="group mb-3 block w-full overflow-hidden sm:mb-4"
           >
             <img
-              src={`/comics/${photo}`}
+              src={photo.url}
               alt={`Photo ${i + 1}`}
               loading="lazy"
               className="w-full grayscale transition-all duration-500 group-hover:grayscale-0"
@@ -36,7 +41,7 @@ export default function PhotoGrid({ photos }: { photos: string[] }) {
             CLOSE
           </button>
           <img
-            src={`/comics/${selected}`}
+            src={selected.url}
             alt="Enlarged photo"
             className="max-h-[90vh] max-w-full object-contain"
             onClick={(e) => e.stopPropagation()}

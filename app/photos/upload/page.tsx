@@ -37,10 +37,14 @@ export default function PhotoUploadPage() {
       formData.append("image", file);
 
       const res = await fetch("/api/photos", { method: "POST", body: formData });
-      const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error ?? "上传失败");
+        let msg = "上传失败";
+        try {
+          const data = await res.json();
+          msg = data.error ?? msg;
+        } catch {}
+        setError(msg);
         return;
       }
 
@@ -48,8 +52,9 @@ export default function PhotoUploadPage() {
       setPreview("");
       (e.target as HTMLFormElement).reset();
       router.push("/photos");
-    } catch {
+    } catch (e) {
       setError("网络异常，上传失败");
+      console.error(e);
     } finally {
       setUploading(false);
     }

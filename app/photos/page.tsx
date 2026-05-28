@@ -4,14 +4,27 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import PhotoGrid from "./PhotoGrid";
 
+interface Photo {
+  name: string;
+  url: string;
+}
+
 export default function PhotosPage() {
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/photos")
       .then((res) => res.json())
-      .then((data) => setPhotos(data.photos ?? []))
+      .then((data) => {
+        const list = (data.photos ?? []) as string[];
+        setPhotos(
+          list.map((name) => ({
+            name,
+            url: `/api/photos?file=${name}`,
+          })),
+        );
+      })
       .finally(() => setLoading(false));
   }, []);
 
