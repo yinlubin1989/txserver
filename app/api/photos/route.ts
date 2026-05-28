@@ -1,5 +1,5 @@
 import { readdirSync, createReadStream } from "node:fs";
-import { writeFile, mkdir, stat } from "node:fs/promises";
+import { writeFile, mkdir, stat, unlink } from "node:fs/promises";
 import { join, extname } from "node:path";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
@@ -74,5 +74,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ filename, url: `/api/photos?file=${filename}` }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "上传失败" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const filename = request.nextUrl.searchParams.get("file");
+    const { password } = await request.json();
+
+    if (password !== "123") {
+      return NextResponse.json({ error: "密码错误" }, { status: 403 });
+    }
+
+    if (!filename) {
+      return NextResponse.json({ error: "缺少文件名" }, { status: 400 });
+    }
+
+    const filePath = join(uploadDir, filename);
+    await unlink(filePath);
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ error: "删除失败" }, { status: 500 });
   }
 }

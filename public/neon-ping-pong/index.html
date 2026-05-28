@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>霓虹乒乓对打</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="styles.css?v=20260519" />
+  </head>
+  <body>
+    <main class="arena-shell">
+      <section class="cabinet" aria-label="霓虹乒乓对打">
+        <div class="marquee" aria-hidden="true">
+          <span>霓虹</span>
+          <span class="marquee-mark">乒乓</span>
+          <span>对打</span>
+        </div>
+
+        <div class="screen">
+          <canvas id="game" width="1280" height="720" aria-label="乒乓球对打球台"></canvas>
+          <div id="announcer" class="announcer" aria-live="polite"></div>
+          <div id="lobbyPanel" class="lobby-panel">
+            <div class="lobby-card">
+              <p id="connectionStatus" class="lobby-kicker">连接中</p>
+              <h1>联机球房</h1>
+              <p id="lobbyMessage" class="lobby-message">创建球台，或加入一个等待中的对手。</p>
+              <div class="lobby-actions">
+                <button id="practiceButton" type="button">单机练球</button>
+                <button id="createRoomButton" type="button">创建球台</button>
+                <button id="refreshRoomsButton" type="button">刷新列表</button>
+              </div>
+              <div id="roomList" class="room-list" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-deck">
+          <button id="startButton" class="coin-button" type="button">练球</button>
+          <button id="resetButton" class="round-button" type="button" aria-label="重新开始对局">重</button>
+          <button id="muteButton" class="round-button" type="button" aria-label="切换音效">音</button>
+          <div id="matchStatus" class="match-status">大厅</div>
+          <div class="deck-lights" aria-hidden="true">
+            <i></i>
+            <i></i>
+            <i></i>
+            <i></i>
+          </div>
+        </div>
+
+        <div class="touch-controls" aria-label="一号玩家触控操作">
+          <button data-touch="up" aria-label="向上移动">上</button>
+          <button data-touch="down" aria-label="向下移动">下</button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="game.js?v=20260519"></script>
+  </body>
+</html>

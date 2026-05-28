@@ -66,7 +66,10 @@ export default function PhotosPage() {
             </Link>
           </div>
         ) : (
-          <PhotoGrid photos={photos} />
+          <PhotoGrid
+            photos={photos}
+            onDelete={(name) => setPhotos((prev) => prev.filter((p) => p.name !== name))}
+          />
         )}
 
         <footer className="mt-16 pb-6 text-center">
