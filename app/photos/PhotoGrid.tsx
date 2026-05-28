@@ -51,22 +51,18 @@ export default function PhotoGrid({
     <>
       <div className="columns-2 gap-3 sm:columns-3 sm:gap-4 lg:columns-4">
         {photos.map((photo, i) => (
-          <div key={photo.name} className="group relative mb-3 overflow-hidden sm:mb-4">
-            <button onClick={() => setSelected(photo)} className="block w-full">
-              <img
-                src={photo.url}
-                alt={`Photo ${i + 1}`}
-                loading="lazy"
-                className="w-full grayscale transition-all duration-500 group-hover:grayscale-0"
-              />
-            </button>
-            <button
-              onClick={() => setDeleteTarget(photo)}
-              className="absolute right-2 top-2 border border-white/30 px-2 py-0.5 text-[10px] tracking-[0.15em] text-white/40 opacity-0 transition-all duration-300 hover:border-red-500 hover:text-red-400 group-hover:opacity-100"
-            >
-              DEL
-            </button>
-          </div>
+          <button
+            key={photo.name}
+            onClick={() => setSelected(photo)}
+            className="group mb-3 block w-full overflow-hidden sm:mb-4"
+          >
+            <img
+              src={photo.url}
+              alt={`Photo ${i + 1}`}
+              loading="lazy"
+              className="w-full grayscale transition-all duration-500 group-hover:grayscale-0"
+            />
+          </button>
         ))}
       </div>
 
