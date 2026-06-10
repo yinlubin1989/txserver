@@ -1,4 +1,4 @@
-import { readdirSync, createReadStream } from "node:fs";
+import { readdirSync, createReadStream, statSync } from "node:fs";
 import { writeFile, mkdir, stat, unlink } from "node:fs/promises";
 import { join, extname } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -40,9 +40,17 @@ export async function GET(request: NextRequest) {
 
   try {
     await mkdir(uploadDir, { recursive: true });
-    const photos = readdirSync(uploadDir)
+    const fileNames = readdirSync(uploadDir)
       .filter((file) => /\.(webp|png|jpe?g)$/i.test(file))
       .sort();
+    const photos = fileNames.map((name) => {
+      try {
+        const s = statSync(join(uploadDir, name));
+        return { name, mtime: Math.floor(s.mtimeMs) };
+      } catch {
+        return { name, mtime: 0 };
+      }
+    });
     return NextResponse.json({ photos });
   } catch {
     return NextResponse.json({ photos: [] });

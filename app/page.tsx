@@ -31,18 +31,24 @@ export default function Home() {
           </li>
         </ul>
 
-        <div className="flex gap-4">
+        <div className="flex flex-wrap justify-center gap-3">
           <Link
             href="/books"
-            className="border border-black px-8 py-2.5 text-xs tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
+            className="border border-black px-6 py-2.5 text-xs tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
           >
             BOOKS →
           </Link>
           <Link
             href="/photos"
-            className="border border-black px-8 py-2.5 text-xs tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
+            className="border border-black px-6 py-2.5 text-xs tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
           >
             PHOTOS →
+          </Link>
+          <Link
+            href="/rgsdoc"
+            className="border border-black px-6 py-2.5 text-xs tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
+          >
+            RGS DOC →
           </Link>
         </div>
 
