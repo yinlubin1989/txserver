@@ -50,6 +50,12 @@ export default function Home() {
           >
             RGS DOC →
           </Link>
+          <Link
+            href="/principles"
+            className="border border-black px-6 py-2.5 text-xs tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
+          >
+            PRINCIPLES →
+          </Link>
         </div>
 
         <div className="h-px w-8 bg-neutral-200" />

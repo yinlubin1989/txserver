@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
         ".gif": "image/gif",
       };
       const stream = createReadStream(filePath);
-      return new NextResponse(stream as any, {
+      return new NextResponse(stream as unknown as BodyInit, {
         headers: {
           "Content-Type": mimeMap[ext] ?? "application/octet-stream",
           "Content-Length": String(stats.size),
