@@ -18,7 +18,7 @@ import {
 } from "./public/neon-ping-pong/engine.mjs";
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = process.env.HOSTNAME || "127.0.0.1";
+const hostname = process.env.HOSTNAME || "0.0.0.0";
 const port = readPort();
 
 const app = next({ dev, hostname, port });
