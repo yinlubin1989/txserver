@@ -68,7 +68,7 @@ function readPort() {
     if (Number.isFinite(cliPort) && cliPort > 0) return cliPort;
   }
 
-  return 3000;
+  return 8000;
 }
 
 function createClient(ws) {
