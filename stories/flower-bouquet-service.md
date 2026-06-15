@@ -4,7 +4,7 @@ title: 鲜花售卖服务说明
 summary: 拍摄用鲜花套餐 288 / 368 元两档，包含全天服装用花、花艺师定制搭配、全程无需动手，当天报价当天返现。
 publishedAt: 2026-06-15T08:00:00.000Z
 updatedAt: 2026-06-15T08:00:00.000Z
-draft: false
+draft: true
 ---
 
 ## 鲜花售卖价格
@@ -33,7 +33,7 @@ draft: false
 - 368 元套餐返现 **60 元**。
 - 当天在群里报价，当天返现。如下所示：
 
-![返现示例](https://yinlubin.cn/api/uploads/files/flower-bouquet-1.png)
+![返现示例](https://yinlubin.cn/api/uploads/files/flower-bouquet-2.png)
 
 ---
 
@@ -55,7 +55,7 @@ draft: false
 
 顾客服装对接用花如下所示：
 
-![服装对接用花示例](https://yinlubin.cn/api/uploads/files/flower-bouquet-2.png)
+![服装对接用花示例](https://yinlubin.cn/api/uploads/files/flower-bouquet-1.png)
 
 ---
 
