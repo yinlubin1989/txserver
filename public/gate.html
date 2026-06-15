@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>密码验证</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .box { text-align: center; }
+  h2 { font-size: 18px; font-weight: 400; color: #333; margin-bottom: 24px; letter-spacing: 0.1em; }
+  input { width: 260px; padding: 12px 16px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; outline: none; text-align: center; }
+  input:focus { border-color: #333; }
+  button { display: block; width: 260px; margin: 16px auto 0; padding: 10px; background: #333; color: #fff; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; letter-spacing: 0.1em; }
+  button:hover { background: #000; }
+  .error { color: #d00; font-size: 13px; margin-top: 12px; display: none; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h2>请输入访问密码</h2>
+  <form onsubmit="return check()">
+    <input type="password" id="pwd" placeholder="密码" autofocus>
+    <button type="submit">进 入</button>
+    <p class="error" id="err">密码错误</p>
+  </form>
+</div>
+<script>
+function check() {
+  if (document.getElementById('pwd').value === 'woshuo') {
+    document.cookie = 'auth=1; path=/; max-age=86400';
+    const redirect = new URLSearchParams(location.search).get('r') || '/docs/';
+    location.href = redirect;
+    return false;
+  }
+  document.getElementById('err').style.display = 'block';
+  return false;
+}
+</script>
+</body>
+</html>
