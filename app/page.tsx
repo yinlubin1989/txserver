@@ -71,6 +71,12 @@ export default function Home() {
           >
             FRP
           </Link>
+          <Link
+            href="http://yinlubin.cn:6080"
+            className="border border-neutral-300 px-5 py-2 text-xs tracking-[0.15em] text-neutral-400 transition-all duration-300 hover:border-black hover:text-black"
+          >
+            OPENWRT
+          </Link>
         </div>
 
         <div className="h-px w-8 bg-neutral-200" />
