@@ -58,6 +58,21 @@ export default function Home() {
           </Link>
         </div>
 
+        <div className="flex flex-wrap justify-center gap-3">
+          <Link
+            href="/docs/"
+            className="border border-neutral-300 px-5 py-2 text-xs tracking-[0.15em] text-neutral-400 transition-all duration-300 hover:border-black hover:text-black"
+          >
+            DOCS
+          </Link>
+          <Link
+            href="/frp/"
+            className="border border-neutral-300 px-5 py-2 text-xs tracking-[0.15em] text-neutral-400 transition-all duration-300 hover:border-black hover:text-black"
+          >
+            FRP
+          </Link>
+        </div>
+
         <div className="h-px w-8 bg-neutral-200" />
       </div>
 
