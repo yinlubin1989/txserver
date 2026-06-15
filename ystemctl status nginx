@@ -1,0 +1,20 @@
+[0;1;32m●[0m nginx.service - The nginx HTTP and reverse proxy server
+     Loaded: loaded (]8;;file://VM-0-8-opencloudos/usr/lib/systemd/system/nginx.service/usr/lib/systemd/system/nginx.service]8;;; [0;1;32menabled[0m; preset: [0;1;38;5;185mdisabled[0m)
+     Active: [0;1;32mactive (running)[0m since Wed 2026-04-15 13:32:03 CST; 2 months 0 days ago
+   Main PID: 288042 (nginx)
+      Tasks: 3[0;38;5;245m (limit: 4340)[0m
+     Memory: 14.2M (peak: 83.2M)
+        CPU: 2min 20.240s
+     CGroup: /system.slice/nginx.service
+             ├─[0;38;5;245m 288042 "nginx: master process /usr/sbin/nginx"[0m
+             ├─[0;38;5;245m1380992 "nginx: worker process"[0m
+             └─[0;38;5;245m1380993 "nginx: worker process"[0m
+
+Apr 15 13:32:03 VM-0-8-opencloudos systemd[1]: Starting nginx.service - The nginx HTTP and reverse proxy server...
+Apr 15 13:32:03 VM-0-8-opencloudos nginx[288038]: nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+Apr 15 13:32:03 VM-0-8-opencloudos nginx[288038]: nginx: configuration file /etc/nginx/nginx.conf test is successful
+Apr 15 13:32:03 VM-0-8-opencloudos systemd[1]: Started nginx.service - The nginx HTTP and reverse proxy server.
+Apr 15 13:47:52 VM-0-8-opencloudos systemd[1]: Reloading nginx.service - The nginx HTTP and reverse proxy server...
+Apr 15 13:47:52 VM-0-8-opencloudos systemd[1]: Reloaded nginx.service - The nginx HTTP and reverse proxy server.
+Apr 23 16:21:18 VM-0-8-opencloudos systemd[1]: Reloading nginx.service - The nginx HTTP and reverse proxy server...
+Apr 23 16:21:18 VM-0-8-opencloudos systemd[1]: Reloaded nginx.service - The nginx HTTP and reverse proxy server.
