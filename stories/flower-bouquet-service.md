@@ -31,7 +31,9 @@ draft: false
 
 - 288 元套餐返现 **40 元**。
 - 368 元套餐返现 **60 元**。
-- 当天在群里报价，当天返现。如图片1所示。
+- 当天在群里报价，当天返现。如下所示：
+
+![返现示例](https://yinlubin.cn/api/uploads/files/flower-bouquet-1.png)
 
 ---
 
@@ -51,7 +53,9 @@ draft: false
 
 我们家官网上有照片，需要做一样的直接发图即可，我们会搭配好交给老师们。
 
-顾客服装对接用花如图片2所示。
+顾客服装对接用花如下所示：
+
+![服装对接用花示例](https://yinlubin.cn/api/uploads/files/flower-bouquet-2.png)
 
 ---
 
