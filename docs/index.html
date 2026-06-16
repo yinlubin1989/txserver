@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>运维文档</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  body { max-width: 900px; margin: 40px auto; padding: 0 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.7; color: #1a1a1a; background: #fff; }
+  pre { background: #f6f8fa; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+  code { font-family: "SF Mono", "Fira Code", monospace; font-size: 13px; background: #f6f8fa; padding: 2px 6px; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+  th, td { border: 1px solid #ddd; padding: 10px 14px; text-align: left; }
+  th { background: #f6f8fa; font-weight: 600; }
+  h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; }
+  h2 { margin-top: 32px; border-bottom: 1px solid #eee; padding-bottom: 6px; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .nav { background: #f6f8fa; padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; font-size: 14px; }
+  .nav a { margin-right: 16px; font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="nav">
+  <a href="/docs/">首页</a>
+  <a href="/docs/frp.html">frps 文档</a>
+  <a href="https://yinlubin.cn">主站</a>
+</div>
+<div id="content">加载中...</div>
+<script>
+const page = location.pathname.replace('/docs/', '') || 'index';
+const file = page.endsWith('.html') ? page.replace('.html', '.md') : page + '.md';
+fetch('/docs/' + file)
+  .then(r => r.text())
+  .then(md => { document.getElementById('content').innerHTML = marked.parse(md); })
+  .catch(() => { document.getElementById('content').innerHTML = '<p>文档加载失败</p>'; });
+</script>
+</body>
+</html>
