@@ -56,6 +56,12 @@ export default function Home() {
           >
             PRINCIPLES →
           </Link>
+          <Link
+            href="/secret"
+            className="border border-black px-6 py-2.5 text-xs tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
+          >
+            SECRET →
+          </Link>
         </div>
 
         <div className="flex flex-wrap justify-center gap-3">
