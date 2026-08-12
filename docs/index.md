@@ -6,6 +6,7 @@
 |------|------|------|
 | frps | frp 内网穿透服务端 | [frps 文档](/docs/frp.html) |
 | txserver | Next.js 主站服务 | - |
+| Hermes Studio | Hermes Agent Web 管理界面 | [打开 Hermes Studio](http://82.157.107.78:8648/) |
 
 ## 文档目录
 
