@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import styles from "./calc.module.css";
 
 type UnitKind = "big" | "small" | "redBig" | "redSmall";
@@ -107,13 +106,11 @@ export default function CalcApp() {
     }
   }, [records, ready]);
 
-  const subtotals = {
-    big: counts.big * UNITS[0].unit,
-    small: counts.small * UNITS[1].unit,
-    redBig: counts.redBig * UNITS[2].unit,
-    redSmall: counts.redSmall * UNITS[3].unit,
-  };
-  const total = subtotals.big + subtotals.small + subtotals.redBig + subtotals.redSmall;
+  const total =
+    counts.big * UNITS[0].unit +
+    counts.small * UNITS[1].unit +
+    counts.redBig * UNITS[2].unit +
+    counts.redSmall * UNITS[3].unit;
 
   const isEmpty =
     counts.big === 0 &&
@@ -184,11 +181,6 @@ export default function CalcApp() {
 
   const saveToday = useCallback(() => {
     if (isEmpty || !todayKey) return;
-    const dayTotal =
-      counts.big * UNITS[0].unit +
-      counts.small * UNITS[1].unit +
-      counts.redBig * UNITS[2].unit +
-      counts.redSmall * UNITS[3].unit;
 
     setRecords((prev) => {
       const existing = prev.find((r) => r.date === todayKey);
@@ -201,7 +193,7 @@ export default function CalcApp() {
                 small: counts.small,
                 redBig: counts.redBig,
                 redSmall: counts.redSmall,
-                total: dayTotal,
+                total,
               }
             : r,
         );
@@ -213,14 +205,14 @@ export default function CalcApp() {
         small: counts.small,
         redBig: counts.redBig,
         redSmall: counts.redSmall,
-        total: dayTotal,
+        total,
       };
       return [record, ...prev];
     });
 
     setCounts(EMPTY_COUNTS);
     setInput("");
-  }, [isEmpty, todayKey, counts]);
+  }, [isEmpty, todayKey, counts, total]);
 
   const deleteRecord = useCallback((id: string) => {
     setRecords((prev) => prev.filter((r) => r.id !== id));
@@ -238,39 +230,6 @@ export default function CalcApp() {
   return (
     <main className={styles.page}>
       <div className={styles.card}>
-        <header className={styles.header}>
-          <div className={styles.brand}>
-            <span className={styles.brandEmoji}>💐</span>
-            <div>
-              <h1 className={styles.title}>卖花记账</h1>
-              <p className={styles.subtitle}>每天记一笔，月底好核对</p>
-            </div>
-          </div>
-          <Link href="/" className={styles.homeLink} aria-label="返回首页">
-            ← 首页
-          </Link>
-        </header>
-
-        {/* 显示屏 */}
-        <div className={styles.display}>
-          <span className={styles.displayLabel}>当天合计</span>
-          <span
-            className={styles.displayTotal}
-            data-negative={total < 0 ? "true" : undefined}
-          >
-            {money(total)}
-          </span>
-          <div className={styles.displayInput}>
-            {input === "" ? (
-              <span className={styles.hint}>输入数量再点单位 · 不输入＝1</span>
-            ) : (
-              <span>
-                数量 <b className={styles.inputNum}>{input}</b>
-              </span>
-            )}
-          </div>
-        </div>
-
         {/* 四个单位键 */}
         <div className={styles.units}>
           {UNITS.map((u) => (
@@ -279,6 +238,9 @@ export default function CalcApp() {
               className={`${styles.unitBtn} ${styles["unit-" + u.kind]}`}
               onClick={() => pressUnit(u.kind)}
             >
+              {counts[u.kind] > 0 && (
+                <span className={styles.unitBadge}>×{counts[u.kind]}</span>
+              )}
               <span className={styles.unitEmoji}>{u.emoji}</span>
               <span className={styles.unitLabel}>{u.label}</span>
               <span className={styles.unitPrice}>
@@ -287,6 +249,17 @@ export default function CalcApp() {
               </span>
             </button>
           ))}
+        </div>
+
+        {/* 数量提示 */}
+        <div className={styles.inputStrip}>
+          {input === "" ? (
+            <span className={styles.hint}>先输数量，再点单位（不输＝1）</span>
+          ) : (
+            <span>
+              数量 <b className={styles.inputNum}>{input}</b>
+            </span>
+          )}
         </div>
 
         {/* 数字键盘 */}
@@ -307,27 +280,10 @@ export default function CalcApp() {
           </button>
         </div>
 
-        {/* 当前一天汇总 */}
-        <div className={styles.summary}>
-          {UNITS.map((u) => (
-            <div key={u.kind} className={styles.summaryRow}>
-              <span>
-                {u.emoji} {u.label}
-              </span>
-              <span className={styles.summaryCount}>×{counts[u.kind]}</span>
-              <span className={styles.summaryAmount}>{money(subtotals[u.kind])}</span>
-            </div>
-          ))}
-          <div className={styles.summaryTotal}>
-            <span>当天合计</span>
-            <span data-negative={total < 0 ? "true" : undefined}>{money(total)}</span>
-          </div>
-        </div>
-
         {/* 保存 / 清零 */}
         <div className={styles.actions}>
           <button className={styles.saveBtn} onClick={saveToday} disabled={isEmpty}>
-            💾 保存今天
+            {isEmpty ? "💾 保存今天" : `💾 保存今天（${money(total)}）`}
           </button>
           <button className={styles.resetBtn} onClick={resetInput}>
             清零
