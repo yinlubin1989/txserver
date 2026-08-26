@@ -182,33 +182,16 @@ export default function CalcApp() {
   const saveToday = useCallback(() => {
     if (isEmpty || !todayKey) return;
 
-    setRecords((prev) => {
-      const existing = prev.find((r) => r.date === todayKey);
-      if (existing) {
-        return prev.map((r) =>
-          r.date === todayKey
-            ? {
-                ...r,
-                big: counts.big,
-                small: counts.small,
-                redBig: counts.redBig,
-                redSmall: counts.redSmall,
-                total,
-              }
-            : r,
-        );
-      }
-      const record: DailyRecord = {
-        id: makeId(),
-        date: todayKey,
-        big: counts.big,
-        small: counts.small,
-        redBig: counts.redBig,
-        redSmall: counts.redSmall,
-        total,
-      };
-      return [record, ...prev];
-    });
+    const record: DailyRecord = {
+      id: makeId(),
+      date: todayKey,
+      big: counts.big,
+      small: counts.small,
+      redBig: counts.redBig,
+      redSmall: counts.redSmall,
+      total,
+    };
+    setRecords((prev) => [record, ...prev]);
 
     setCounts(EMPTY_COUNTS);
     setInput("");
@@ -230,6 +213,26 @@ export default function CalcApp() {
   return (
     <main className={styles.page}>
       <div className={styles.card}>
+        {/* 显示屏 */}
+        <div className={styles.display}>
+          <span className={styles.displayLabel}>当天合计</span>
+          <span
+            className={styles.displayTotal}
+            data-negative={total < 0 ? "true" : undefined}
+          >
+            {money(total)}
+          </span>
+          <div className={styles.displayInput}>
+            {input === "" ? (
+              <span className={styles.hint}>先输数量，再点单位（不输＝1）</span>
+            ) : (
+              <span>
+                数量 <b className={styles.inputNum}>{input}</b>
+              </span>
+            )}
+          </div>
+        </div>
+
         {/* 四个单位键 */}
         <div className={styles.units}>
           {UNITS.map((u) => (
@@ -249,17 +252,6 @@ export default function CalcApp() {
               </span>
             </button>
           ))}
-        </div>
-
-        {/* 数量提示 */}
-        <div className={styles.inputStrip}>
-          {input === "" ? (
-            <span className={styles.hint}>先输数量，再点单位（不输＝1）</span>
-          ) : (
-            <span>
-              数量 <b className={styles.inputNum}>{input}</b>
-            </span>
-          )}
         </div>
 
         {/* 数字键盘 */}
@@ -283,7 +275,7 @@ export default function CalcApp() {
         {/* 保存 / 清零 */}
         <div className={styles.actions}>
           <button className={styles.saveBtn} onClick={saveToday} disabled={isEmpty}>
-            {isEmpty ? "💾 保存今天" : `💾 保存今天（${money(total)}）`}
+            💾 保存今天
           </button>
           <button className={styles.resetBtn} onClick={resetInput}>
             清零
