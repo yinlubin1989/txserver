@@ -1,0 +1,550 @@
+.page {
+  min-height: 100vh;
+  background: linear-gradient(160deg, #fdf6f0 0%, #f7eee4 45%, #fdf3ec 100%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 28px 16px 48px;
+  color: #2c2c2c;
+}
+
+.card {
+  width: 100%;
+  max-width: 430px;
+  background: #fffdfa;
+  border: 1px solid #f0e4d6;
+  border-radius: 24px;
+  box-shadow: 0 20px 60px -20px rgba(180, 130, 90, 0.35);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ============ 头部 ============ */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brandEmoji {
+  font-size: 34px;
+  line-height: 1;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: #a08c78;
+  margin: 2px 0 0;
+}
+
+.homeLink {
+  font-size: 13px;
+  color: #b08d67;
+  text-decoration: none;
+  border: 1px solid #ead9c5;
+  border-radius: 999px;
+  padding: 6px 12px;
+  transition: all 0.2s ease;
+}
+
+.homeLink:hover {
+  color: #fff;
+  background: #b08d67;
+}
+
+/* ============ 日期 ============ */
+
+.dateBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dateNav {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #ead9c5;
+  background: #fff;
+  color: #8a7257;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.dateNav:hover {
+  background: #f7ecdf;
+}
+
+.dateBox {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #faf3ea;
+  border-radius: 999px;
+  padding: 8px 14px;
+  min-width: 0;
+}
+
+.dateText {
+  font-size: 14px;
+  font-weight: 600;
+  color: #5e4a34;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.todayTag {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: #e58a7a;
+  border-radius: 999px;
+  padding: 2px 8px;
+  flex-shrink: 0;
+}
+
+.todayBtn {
+  font-size: 12px;
+  color: #b08d67;
+  border: 1px solid #ead9c5;
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.todayBtn:hover {
+  background: #f7ecdf;
+}
+
+/* ============ 显示屏 ============ */
+
+.display {
+  background: linear-gradient(150deg, #3d3a36 0%, #292723 100%);
+  border-radius: 18px;
+  padding: 18px 20px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.displayLabel {
+  font-size: 12px;
+  color: #cfc4b8;
+  letter-spacing: 0.12em;
+}
+
+.displayTotal {
+  font-size: 40px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: #fff;
+}
+
+.displayTotal[data-negative="true"] {
+  color: #ff9b8a;
+}
+
+.displayInput {
+  min-height: 22px;
+  font-size: 14px;
+  color: #e8ded2;
+}
+
+.hint {
+  color: #9b9186;
+  font-size: 13px;
+}
+
+.inputNum {
+  font-size: 18px;
+  color: #ffd9a8;
+  font-variant-numeric: tabular-nums;
+}
+
+.flash {
+  background: #eef7ee;
+  border: 1px solid #bfe0c0;
+  color: #2f7a35;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+  text-align: center;
+  animation: fadeSlide 0.25s ease;
+}
+
+@keyframes fadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============ 单位键 ============ */
+
+.units {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.unitBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 14px 6px 12px;
+  border: none;
+  border-radius: 16px;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.08s ease, filter 0.15s ease;
+  box-shadow: 0 8px 18px -8px rgba(0, 0, 0, 0.35);
+}
+
+.unitBtn:active {
+  transform: scale(0.96);
+}
+
+.unit-big {
+  background: linear-gradient(150deg, #f05a7e 0%, #d92f60 100%);
+}
+
+.unit-small {
+  background: linear-gradient(150deg, #ffb080 0%, #f2913c 100%);
+}
+
+.unit-red {
+  background: linear-gradient(150deg, #ff6b5e 0%, #e4362a 100%);
+}
+
+.unitEmoji {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.unitLabel {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.unitPrice {
+  font-size: 12px;
+  opacity: 0.92;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============ 数字键 ============ */
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.key {
+  height: 52px;
+  border: 1px solid #eee0d1;
+  background: #fff;
+  border-radius: 14px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #4a3b2a;
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.15s ease;
+  box-shadow: 0 3px 0 #e7d8c6;
+}
+
+.key:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #e7d8c6;
+}
+
+.keyFn {
+  color: #b9835a;
+  background: #fbf3ea;
+  font-size: 18px;
+}
+
+/* ============ 自定义金额 ============ */
+
+.custom {
+  display: flex;
+  gap: 8px;
+}
+
+.signToggle {
+  display: flex;
+  background: #f3e9dc;
+  border-radius: 12px;
+  padding: 3px;
+  flex-shrink: 0;
+}
+
+.signToggle button {
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #9a8166;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.signToggle .signActive {
+  background: #fff;
+  color: #d07357;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.customBtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px dashed #dbbf9f;
+  background: #fff8f0;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #a5743f;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.customBtn:hover {
+  background: #fff1e0;
+}
+
+.customPreview {
+  font-variant-numeric: tabular-nums;
+  color: #d07357;
+  font-weight: 700;
+}
+
+/* ============ 汇总 ============ */
+
+.summary {
+  background: #faf4ec;
+  border-radius: 16px;
+  padding: 6px 16px;
+}
+
+.summaryRow {
+  display: flex;
+  align-items: baseline;
+  padding: 9px 0;
+  border-bottom: 1px solid #f0e3d3;
+  font-size: 15px;
+}
+
+.summaryRow:last-child {
+  border-bottom: none;
+}
+
+.summaryRow > span:first-child {
+  flex: 1;
+  font-weight: 600;
+  color: #4a3b2a;
+}
+
+.summaryCount {
+  color: #a08c78;
+  font-size: 13px;
+  margin-right: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.summaryAmount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #4a3b2a;
+  min-width: 84px;
+  text-align: right;
+}
+
+/* ============ 明细 ============ */
+
+.ledger {
+  background: #fff;
+  border: 1px solid #f0e4d6;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.ledgerHead {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #8a7257;
+  border-bottom: 1px solid #f0e4d6;
+  background: #fdf8f2;
+}
+
+.empty {
+  padding: 26px 16px;
+  text-align: center;
+  color: #b4a48f;
+  font-size: 14px;
+}
+
+.ledgerList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.ledgerItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px;
+  border-bottom: 1px solid #f6ecdf;
+  font-size: 14px;
+}
+
+.ledgerItem:last-child {
+  border-bottom: none;
+}
+
+.ledgerTime {
+  color: #b4a48f;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.ledgerLabel {
+  flex: 1;
+  color: #4a3b2a;
+  font-weight: 600;
+}
+
+.ledgerQty {
+  color: #a08c78;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ledgerAmount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #2f7a35;
+  min-width: 72px;
+  text-align: right;
+}
+
+.ledgerAmount[data-negative="true"] {
+  color: #d9482f;
+}
+
+.ledgerDel {
+  border: none;
+  background: transparent;
+  color: #d3c4b0;
+  font-size: 20px;
+  cursor: pointer;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  line-height: 1;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.ledgerDel:hover {
+  background: #fdecec;
+  color: #e4362a;
+}
+
+/* ============ 底部 ============ */
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.resetBtn {
+  width: 100%;
+  border: 1px solid #f0c8bd;
+  background: #fff;
+  color: #d9482f;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.resetBtn:hover {
+  background: #fdecec;
+}
+
+.footNote {
+  font-size: 12px;
+  color: #b4a48f;
+  margin: 0;
+  text-align: center;
+}
+
+/* ============ 响应式 ============ */
+
+@media (max-width: 480px) {
+  .page {
+    padding: 0;
+  }
+
+  .card {
+    border-radius: 0;
+    border: none;
+    min-height: 100vh;
+    padding: 18px;
+  }
+
+  .displayTotal {
+    font-size: 36px;
+  }
+}
