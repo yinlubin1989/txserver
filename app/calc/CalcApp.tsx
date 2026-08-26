@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import styles from "./calc.module.css";
 
-type UnitKind = "big" | "small" | "red";
+type UnitKind = "big" | "small" | "redBig" | "redSmall";
 
 interface UnitDef {
   kind: UnitKind;
@@ -18,17 +18,19 @@ interface DailyRecord {
   date: string; // YYYY-MM-DD
   big: number;
   small: number;
-  red: number;
+  redBig: number;
+  redSmall: number;
   total: number;
 }
 
 const UNITS: UnitDef[] = [
   { kind: "big", label: "大花", emoji: "🌹", unit: 368 },
   { kind: "small", label: "小花", emoji: "🌸", unit: 288 },
-  { kind: "red", label: "发红包", emoji: "🧧", unit: -60 },
+  { kind: "redBig", label: "大红", emoji: "🧧", unit: -60 },
+  { kind: "redSmall", label: "小红", emoji: "🧧", unit: -40 },
 ];
 
-const STORAGE_KEY = "txserver-calc-daily-v1";
+const STORAGE_KEY = "txserver-calc-daily-v2";
 
 /* ---------- 日期与数字格式化 ---------- */
 
@@ -63,15 +65,18 @@ function makeId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+const EMPTY_COUNTS: Record<UnitKind, number> = {
+  big: 0,
+  small: 0,
+  redBig: 0,
+  redSmall: 0,
+};
+
 export default function CalcApp() {
   const [ready, setReady] = useState(false);
   const [todayKey, setTodayKey] = useState("");
   const [records, setRecords] = useState<DailyRecord[]>([]);
-  const [counts, setCounts] = useState<Record<UnitKind, number>>({
-    big: 0,
-    small: 0,
-    red: 0,
-  });
+  const [counts, setCounts] = useState<Record<UnitKind, number>>(EMPTY_COUNTS);
   const [input, setInput] = useState<string>("");
 
   // 首次加载：读本地记录（在回调中 setState，避免 effect 内同步 setState）
@@ -105,11 +110,16 @@ export default function CalcApp() {
   const subtotals = {
     big: counts.big * UNITS[0].unit,
     small: counts.small * UNITS[1].unit,
-    red: counts.red * UNITS[2].unit,
+    redBig: counts.redBig * UNITS[2].unit,
+    redSmall: counts.redSmall * UNITS[3].unit,
   };
-  const total = subtotals.big + subtotals.small + subtotals.red;
+  const total = subtotals.big + subtotals.small + subtotals.redBig + subtotals.redSmall;
 
-  const isEmpty = counts.big === 0 && counts.small === 0 && counts.red === 0;
+  const isEmpty =
+    counts.big === 0 &&
+    counts.small === 0 &&
+    counts.redBig === 0 &&
+    counts.redSmall === 0;
 
   /* ---------- 历史记录分组 ---------- */
 
@@ -166,7 +176,7 @@ export default function CalcApp() {
   );
 
   const resetInput = useCallback(() => {
-    setCounts({ big: 0, small: 0, red: 0 });
+    setCounts(EMPTY_COUNTS);
     setInput("");
   }, []);
 
@@ -177,14 +187,22 @@ export default function CalcApp() {
     const dayTotal =
       counts.big * UNITS[0].unit +
       counts.small * UNITS[1].unit +
-      counts.red * UNITS[2].unit;
+      counts.redBig * UNITS[2].unit +
+      counts.redSmall * UNITS[3].unit;
 
     setRecords((prev) => {
       const existing = prev.find((r) => r.date === todayKey);
       if (existing) {
         return prev.map((r) =>
           r.date === todayKey
-            ? { ...r, big: counts.big, small: counts.small, red: counts.red, total: dayTotal }
+            ? {
+                ...r,
+                big: counts.big,
+                small: counts.small,
+                redBig: counts.redBig,
+                redSmall: counts.redSmall,
+                total: dayTotal,
+              }
             : r,
         );
       }
@@ -193,13 +211,14 @@ export default function CalcApp() {
         date: todayKey,
         big: counts.big,
         small: counts.small,
-        red: counts.red,
+        redBig: counts.redBig,
+        redSmall: counts.redSmall,
         total: dayTotal,
       };
       return [record, ...prev];
     });
 
-    setCounts({ big: 0, small: 0, red: 0 });
+    setCounts(EMPTY_COUNTS);
     setInput("");
   }, [isEmpty, todayKey, counts]);
 
@@ -252,7 +271,7 @@ export default function CalcApp() {
           </div>
         </div>
 
-        {/* 三个单位键 */}
+        {/* 四个单位键 */}
         <div className={styles.units}>
           {UNITS.map((u) => (
             <button
@@ -290,21 +309,15 @@ export default function CalcApp() {
 
         {/* 当前一天汇总 */}
         <div className={styles.summary}>
-          <div className={styles.summaryRow}>
-            <span>🌹 大花</span>
-            <span className={styles.summaryCount}>×{counts.big}</span>
-            <span className={styles.summaryAmount}>{money(subtotals.big)}</span>
-          </div>
-          <div className={styles.summaryRow}>
-            <span>🌸 小花</span>
-            <span className={styles.summaryCount}>×{counts.small}</span>
-            <span className={styles.summaryAmount}>{money(subtotals.small)}</span>
-          </div>
-          <div className={styles.summaryRow}>
-            <span>🧧 红包</span>
-            <span className={styles.summaryCount}>×{counts.red}</span>
-            <span className={styles.summaryAmount}>{money(subtotals.red)}</span>
-          </div>
+          {UNITS.map((u) => (
+            <div key={u.kind} className={styles.summaryRow}>
+              <span>
+                {u.emoji} {u.label}
+              </span>
+              <span className={styles.summaryCount}>×{counts[u.kind]}</span>
+              <span className={styles.summaryAmount}>{money(subtotals[u.kind])}</span>
+            </div>
+          ))}
           <div className={styles.summaryTotal}>
             <span>当天合计</span>
             <span data-negative={total < 0 ? "true" : undefined}>{money(total)}</span>
@@ -313,11 +326,7 @@ export default function CalcApp() {
 
         {/* 保存 / 清零 */}
         <div className={styles.actions}>
-          <button
-            className={styles.saveBtn}
-            onClick={saveToday}
-            disabled={isEmpty}
-          >
+          <button className={styles.saveBtn} onClick={saveToday} disabled={isEmpty}>
             💾 保存今天
           </button>
           <button className={styles.resetBtn} onClick={resetInput}>
@@ -330,7 +339,10 @@ export default function CalcApp() {
           <div className={styles.historyHead}>
             <span>已保存记录</span>
             <span className={styles.monthTotal}>
-              本月合计 <b data-negative={monthTotal < 0 ? "true" : undefined}>{money(monthTotal)}</b>
+              本月合计{" "}
+              <b data-negative={monthTotal < 0 ? "true" : undefined}>
+                {money(monthTotal)}
+              </b>
             </span>
           </div>
 
@@ -349,7 +361,7 @@ export default function CalcApp() {
                     <li key={r.id} className={styles.recordItem}>
                       <span className={styles.recordDate}>{formatDateShort(r.date)}</span>
                       <span className={styles.recordDetail}>
-                        大花{r.big} · 小花{r.small} · 红包{r.red}
+                        大花{r.big} · 小花{r.small} · 大红{r.redBig} · 小红{r.redSmall}
                       </span>
                       <span
                         className={styles.recordAmount}

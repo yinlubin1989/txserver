@@ -121,7 +121,7 @@
 
 .units {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
 }
 
@@ -151,8 +151,12 @@
   background: linear-gradient(150deg, #ffb080 0%, #f2913c 100%);
 }
 
-.unit-red {
+.unit-redBig {
   background: linear-gradient(150deg, #ff6b5e 0%, #e4362a 100%);
+}
+
+.unit-redSmall {
+  background: linear-gradient(150deg, #ff9d8a 0%, #f76a5c 100%);
 }
 
 .unitEmoji {
