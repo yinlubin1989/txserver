@@ -68,79 +68,6 @@
   background: #b08d67;
 }
 
-/* ============ 日期 ============ */
-
-.dateBar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.dateNav {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid #ead9c5;
-  background: #fff;
-  color: #8a7257;
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-}
-
-.dateNav:hover {
-  background: #f7ecdf;
-}
-
-.dateBox {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: #faf3ea;
-  border-radius: 999px;
-  padding: 8px 14px;
-  min-width: 0;
-}
-
-.dateText {
-  font-size: 14px;
-  font-weight: 600;
-  color: #5e4a34;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.todayTag {
-  font-size: 10px;
-  font-weight: 700;
-  color: #fff;
-  background: #e58a7a;
-  border-radius: 999px;
-  padding: 2px 8px;
-  flex-shrink: 0;
-}
-
-.todayBtn {
-  font-size: 12px;
-  color: #b08d67;
-  border: 1px solid #ead9c5;
-  background: #fff;
-  border-radius: 999px;
-  padding: 6px 10px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s ease;
-}
-
-.todayBtn:hover {
-  background: #f7ecdf;
-}
-
 /* ============ 显示屏 ============ */
 
 .display {
@@ -161,7 +88,7 @@
 }
 
 .displayTotal {
-  font-size: 40px;
+  font-size: 42px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
@@ -188,28 +115,6 @@
   font-size: 18px;
   color: #ffd9a8;
   font-variant-numeric: tabular-nums;
-}
-
-.flash {
-  background: #eef7ee;
-  border: 1px solid #bfe0c0;
-  color: #2f7a35;
-  border-radius: 12px;
-  padding: 10px 14px;
-  font-size: 14px;
-  text-align: center;
-  animation: fadeSlide 0.25s ease;
-}
-
-@keyframes fadeSlide {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 /* ============ 单位键 ============ */
@@ -299,65 +204,6 @@
   font-size: 18px;
 }
 
-/* ============ 自定义金额 ============ */
-
-.custom {
-  display: flex;
-  gap: 8px;
-}
-
-.signToggle {
-  display: flex;
-  background: #f3e9dc;
-  border-radius: 12px;
-  padding: 3px;
-  flex-shrink: 0;
-}
-
-.signToggle button {
-  border: none;
-  background: transparent;
-  padding: 8px 12px;
-  border-radius: 9px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #9a8166;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.signToggle .signActive {
-  background: #fff;
-  color: #d07357;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-}
-
-.customBtn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border: 1px dashed #dbbf9f;
-  background: #fff8f0;
-  border-radius: 12px;
-  padding: 10px 16px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #a5743f;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.customBtn:hover {
-  background: #fff1e0;
-}
-
-.customPreview {
-  font-variant-numeric: tabular-nums;
-  color: #d07357;
-  font-weight: 700;
-}
-
 /* ============ 汇总 ============ */
 
 .summary {
@@ -372,10 +218,6 @@
   padding: 9px 0;
   border-bottom: 1px solid #f0e3d3;
   font-size: 15px;
-}
-
-.summaryRow:last-child {
-  border-bottom: none;
 }
 
 .summaryRow > span:first-child {
@@ -399,112 +241,27 @@
   text-align: right;
 }
 
-/* ============ 明细 ============ */
-
-.ledger {
-  background: #fff;
-  border: 1px solid #f0e4d6;
-  border-radius: 16px;
-  overflow: hidden;
-}
-
-.ledgerHead {
+.summaryTotal {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
-  padding: 12px 16px;
-  font-size: 13px;
+  padding: 11px 0 12px;
+  font-size: 16px;
   font-weight: 700;
-  color: #8a7257;
-  border-bottom: 1px solid #f0e4d6;
-  background: #fdf8f2;
-}
-
-.empty {
-  padding: 26px 16px;
-  text-align: center;
-  color: #b4a48f;
-  font-size: 14px;
-}
-
-.ledgerList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.ledgerItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 11px 16px;
-  border-bottom: 1px solid #f6ecdf;
-  font-size: 14px;
-}
-
-.ledgerItem:last-child {
-  border-bottom: none;
-}
-
-.ledgerTime {
-  color: #b4a48f;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
-}
-
-.ledgerLabel {
-  flex: 1;
   color: #4a3b2a;
-  font-weight: 600;
 }
 
-.ledgerQty {
-  color: #a08c78;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-}
-
-.ledgerAmount {
-  font-weight: 700;
+.summaryTotal span:last-child {
+  font-size: 20px;
   font-variant-numeric: tabular-nums;
   color: #2f7a35;
-  min-width: 72px;
-  text-align: right;
 }
 
-.ledgerAmount[data-negative="true"] {
+.summaryTotal span[data-negative="true"] {
   color: #d9482f;
 }
 
-.ledgerDel {
-  border: none;
-  background: transparent;
-  color: #d3c4b0;
-  font-size: 20px;
-  cursor: pointer;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  line-height: 1;
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-}
-
-.ledgerDel:hover {
-  background: #fdecec;
-  color: #e4362a;
-}
-
-/* ============ 底部 ============ */
-
-.footer {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: center;
-}
+/* ============ 清零 ============ */
 
 .resetBtn {
   width: 100%;
@@ -545,6 +302,6 @@
   }
 
   .displayTotal {
-    font-size: 36px;
+    font-size: 38px;
   }
 }
