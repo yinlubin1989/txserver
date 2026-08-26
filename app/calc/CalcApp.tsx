@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import styles from "./calc.module.css";
 
@@ -13,11 +13,41 @@ interface UnitDef {
   unit: number;
 }
 
+interface DailyRecord {
+  id: string;
+  date: string; // YYYY-MM-DD
+  big: number;
+  small: number;
+  red: number;
+  total: number;
+}
+
 const UNITS: UnitDef[] = [
   { kind: "big", label: "大花", emoji: "🌹", unit: 368 },
   { kind: "small", label: "小花", emoji: "🌸", unit: 288 },
   { kind: "red", label: "发红包", emoji: "🧧", unit: -60 },
 ];
+
+const STORAGE_KEY = "txserver-calc-daily-v1";
+
+/* ---------- 日期与数字格式化 ---------- */
+
+function toDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function formatDateShort(key: string): string {
+  const [, m, d] = key.split("-").map(Number);
+  return `${m}月${d}日`;
+}
+
+function formatMonth(monthKey: string): string {
+  const [y, m] = monthKey.split("-").map(Number);
+  return `${y}年${m}月`;
+}
 
 function money(n: number): string {
   const abs = Math.abs(n).toLocaleString("zh-CN", {
@@ -26,7 +56,17 @@ function money(n: number): string {
   return (n < 0 ? "-¥" : "¥") + abs;
 }
 
+function makeId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export default function CalcApp() {
+  const [ready, setReady] = useState(false);
+  const [todayKey, setTodayKey] = useState("");
+  const [records, setRecords] = useState<DailyRecord[]>([]);
   const [counts, setCounts] = useState<Record<UnitKind, number>>({
     big: 0,
     small: 0,
@@ -34,12 +74,63 @@ export default function CalcApp() {
   });
   const [input, setInput] = useState<string>("");
 
+  // 首次加载：读本地记录（在回调中 setState，避免 effect 内同步 setState）
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setTodayKey(toDateKey(new Date()));
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) setRecords(parsed);
+        }
+      } catch {
+        /* ignore */
+      }
+      setReady(true);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // 记录变化即保存
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    } catch {
+      /* ignore */
+    }
+  }, [records, ready]);
+
   const subtotals = {
     big: counts.big * UNITS[0].unit,
     small: counts.small * UNITS[1].unit,
     red: counts.red * UNITS[2].unit,
   };
   const total = subtotals.big + subtotals.small + subtotals.red;
+
+  const isEmpty = counts.big === 0 && counts.small === 0 && counts.red === 0;
+
+  /* ---------- 历史记录分组 ---------- */
+
+  const groups = useMemo(() => {
+    const map = new Map<string, DailyRecord[]>();
+    const sorted = [...records].sort((a, b) => b.date.localeCompare(a.date));
+    for (const r of sorted) {
+      const month = r.date.slice(0, 7);
+      const list = map.get(month);
+      if (list) list.push(r);
+      else map.set(month, [r]);
+    }
+    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }, [records]);
+
+  const currentMonth = todayKey.slice(0, 7);
+  const monthTotal = useMemo(() => {
+    return records
+      .filter((r) => r.date.startsWith(currentMonth))
+      .reduce((sum, r) => sum + r.total, 0);
+  }, [records, currentMonth]);
 
   /* ---------- 输入处理 ---------- */
 
@@ -61,30 +152,67 @@ export default function CalcApp() {
 
   /* ---------- 累加 ---------- */
 
-  const pressUnit = useCallback((kind: UnitKind) => {
-    const qty = input === "" ? 1 : parseInt(input, 10);
-    if (!Number.isFinite(qty) || qty <= 0) {
+  const pressUnit = useCallback(
+    (kind: UnitKind) => {
+      const qty = input === "" ? 1 : parseInt(input, 10);
+      if (!Number.isFinite(qty) || qty <= 0) {
+        setInput("");
+        return;
+      }
+      setCounts((prev) => ({ ...prev, [kind]: prev[kind] + qty }));
       setInput("");
-      return;
-    }
-    setCounts((prev) => ({ ...prev, [kind]: prev[kind] + qty }));
-    setInput("");
-  }, [input]);
+    },
+    [input],
+  );
 
-  const reset = useCallback(() => {
+  const resetInput = useCallback(() => {
     setCounts({ big: 0, small: 0, red: 0 });
     setInput("");
   }, []);
 
-  const resetIfConfirmed = useCallback(() => {
-    if (total === 0) {
-      reset();
-      return;
+  /* ---------- 保存与删除 ---------- */
+
+  const saveToday = useCallback(() => {
+    if (isEmpty || !todayKey) return;
+    const dayTotal =
+      counts.big * UNITS[0].unit +
+      counts.small * UNITS[1].unit +
+      counts.red * UNITS[2].unit;
+
+    setRecords((prev) => {
+      const existing = prev.find((r) => r.date === todayKey);
+      if (existing) {
+        return prev.map((r) =>
+          r.date === todayKey
+            ? { ...r, big: counts.big, small: counts.small, red: counts.red, total: dayTotal }
+            : r,
+        );
+      }
+      const record: DailyRecord = {
+        id: makeId(),
+        date: todayKey,
+        big: counts.big,
+        small: counts.small,
+        red: counts.red,
+        total: dayTotal,
+      };
+      return [record, ...prev];
+    });
+
+    setCounts({ big: 0, small: 0, red: 0 });
+    setInput("");
+  }, [isEmpty, todayKey, counts]);
+
+  const deleteRecord = useCallback((id: string) => {
+    setRecords((prev) => prev.filter((r) => r.id !== id));
+  }, []);
+
+  const clearHistory = useCallback(() => {
+    if (records.length === 0) return;
+    if (window.confirm("确定清空所有已保存记录吗？此操作不可撤销。")) {
+      setRecords([]);
     }
-    if (window.confirm("确定清零所有数量吗？")) {
-      reset();
-    }
-  }, [total, reset]);
+  }, [records.length]);
 
   /* ---------- 渲染 ---------- */
 
@@ -96,7 +224,7 @@ export default function CalcApp() {
             <span className={styles.brandEmoji}>💐</span>
             <div>
               <h1 className={styles.title}>卖花记账</h1>
-              <p className={styles.subtitle}>月末合计账单</p>
+              <p className={styles.subtitle}>每天记一笔，月底好核对</p>
             </div>
           </div>
           <Link href="/" className={styles.homeLink} aria-label="返回首页">
@@ -106,7 +234,7 @@ export default function CalcApp() {
 
         {/* 显示屏 */}
         <div className={styles.display}>
-          <span className={styles.displayLabel}>合计</span>
+          <span className={styles.displayLabel}>当天合计</span>
           <span
             className={styles.displayTotal}
             data-negative={total < 0 ? "true" : undefined}
@@ -160,7 +288,7 @@ export default function CalcApp() {
           </button>
         </div>
 
-        {/* 汇总 */}
+        {/* 当前一天汇总 */}
         <div className={styles.summary}>
           <div className={styles.summaryRow}>
             <span>🌹 大花</span>
@@ -178,16 +306,80 @@ export default function CalcApp() {
             <span className={styles.summaryAmount}>{money(subtotals.red)}</span>
           </div>
           <div className={styles.summaryTotal}>
-            <span>合计</span>
+            <span>当天合计</span>
             <span data-negative={total < 0 ? "true" : undefined}>{money(total)}</span>
           </div>
         </div>
 
-        {/* 清零 */}
-        <button className={styles.resetBtn} onClick={resetIfConfirmed}>
-          清零
-        </button>
-        <p className={styles.footNote}>仅在本机实时合计，不保存任何数据。</p>
+        {/* 保存 / 清零 */}
+        <div className={styles.actions}>
+          <button
+            className={styles.saveBtn}
+            onClick={saveToday}
+            disabled={isEmpty}
+          >
+            💾 保存今天
+          </button>
+          <button className={styles.resetBtn} onClick={resetInput}>
+            清零
+          </button>
+        </div>
+
+        {/* 已保存记录 */}
+        <div className={styles.history}>
+          <div className={styles.historyHead}>
+            <span>已保存记录</span>
+            <span className={styles.monthTotal}>
+              本月合计 <b data-negative={monthTotal < 0 ? "true" : undefined}>{money(monthTotal)}</b>
+            </span>
+          </div>
+
+          {records.length === 0 ? (
+            <div className={styles.empty}>
+              还没有保存记录。
+              <br />
+              输入当天数量后，点上面的「保存今天」。
+            </div>
+          ) : (
+            groups.map(([month, list]) => (
+              <div key={month} className={styles.monthGroup}>
+                <div className={styles.monthHead}>{formatMonth(month)}</div>
+                <ul className={styles.recordList}>
+                  {list.map((r) => (
+                    <li key={r.id} className={styles.recordItem}>
+                      <span className={styles.recordDate}>{formatDateShort(r.date)}</span>
+                      <span className={styles.recordDetail}>
+                        大花{r.big} · 小花{r.small} · 红包{r.red}
+                      </span>
+                      <span
+                        className={styles.recordAmount}
+                        data-negative={r.total < 0 ? "true" : undefined}
+                      >
+                        {money(r.total)}
+                      </span>
+                      <button
+                        className={styles.recordDel}
+                        onClick={() => deleteRecord(r.id)}
+                        aria-label="删除这条"
+                        title="删除"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          )}
+
+          {records.length > 0 && (
+            <button className={styles.clearBtn} onClick={clearHistory}>
+              清空所有记录
+            </button>
+          )}
+        </div>
+
+        <p className={styles.footNote}>数据保存在本机浏览器，不联网。</p>
       </div>
     </main>
   );

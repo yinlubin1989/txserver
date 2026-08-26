@@ -264,12 +264,13 @@
 /* ============ 清零 ============ */
 
 .resetBtn {
-  width: 100%;
+  flex: 0 0 auto;
+  min-width: 88px;
   border: 1px solid #f0c8bd;
   background: #fff;
   color: #d9482f;
   border-radius: 12px;
-  padding: 12px;
+  padding: 12px 18px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -277,6 +278,177 @@
 }
 
 .resetBtn:hover {
+  background: #fdecec;
+}
+
+/* ============ 保存 / 清零 ============ */
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.saveBtn {
+  flex: 1;
+  border: none;
+  background: linear-gradient(150deg, #6fbf7a 0%, #4aa156 100%);
+  color: #fff;
+  border-radius: 12px;
+  padding: 13px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 18px -8px rgba(74, 161, 86, 0.6);
+  transition: transform 0.08s ease, filter 0.15s ease;
+}
+
+.saveBtn:active {
+  transform: scale(0.97);
+}
+
+.saveBtn:disabled {
+  background: #d8d3cb;
+  box-shadow: none;
+  cursor: not-allowed;
+  color: #9b948a;
+}
+
+/* ============ 历史记录 ============ */
+
+.history {
+  background: #fff;
+  border: 1px solid #f0e4d6;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.historyHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #8a7257;
+  border-bottom: 1px solid #f0e4d6;
+  background: #fdf8f2;
+}
+
+.monthTotal {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.monthTotal b {
+  font-size: 15px;
+  color: #2f7a35;
+}
+
+.monthTotal b[data-negative="true"] {
+  color: #d9482f;
+}
+
+.empty {
+  padding: 26px 16px;
+  text-align: center;
+  color: #b4a48f;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.monthGroup + .monthGroup {
+  border-top: 1px solid #f0e4d6;
+}
+
+.monthHead {
+  padding: 8px 16px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #b08d67;
+  letter-spacing: 0.06em;
+}
+
+.recordList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.recordItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+}
+
+.recordItem + .recordItem {
+  border-top: 1px solid #f8f0e6;
+}
+
+.recordDate {
+  color: #a08c78;
+  font-size: 13px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.recordDetail {
+  flex: 1;
+  color: #4a3b2a;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recordAmount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #2f7a35;
+  flex-shrink: 0;
+}
+
+.recordAmount[data-negative="true"] {
+  color: #d9482f;
+}
+
+.recordDel {
+  border: none;
+  background: transparent;
+  color: #d3c4b0;
+  font-size: 20px;
+  cursor: pointer;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  line-height: 1;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.recordDel:hover {
+  background: #fdecec;
+  color: #e4362a;
+}
+
+.clearBtn {
+  display: block;
+  width: calc(100% - 32px);
+  margin: 8px 16px 16px;
+  border: 1px solid #f0c8bd;
+  background: #fff;
+  color: #d9482f;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.clearBtn:hover {
   background: #fdecec;
 }
 
