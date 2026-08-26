@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./calc.module.css";
 
 type UnitKind = "big" | "small" | "redBig" | "redSmall";
@@ -62,6 +62,36 @@ function makeId(): string {
     return crypto.randomUUID();
   }
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+/* ---------- 按键音效 ---------- */
+
+let audioCtx: AudioContext | null = null;
+
+function playTone(freq: number, duration = 0.07, volume = 0.12) {
+  try {
+    if (typeof window === "undefined") return;
+    const Ctx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (!Ctx) return;
+    if (!audioCtx) audioCtx = new Ctx();
+    if (audioCtx.state === "suspended") void audioCtx.resume();
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch {
+    /* ignore */
+  }
 }
 
 const EMPTY_COUNTS: Record<UnitKind, number> = {
@@ -142,6 +172,7 @@ export default function CalcApp() {
   /* ---------- 输入处理 ---------- */
 
   const pressDigit = useCallback((d: string) => {
+    playTone(660, 0.06);
     setInput((prev) => {
       if (prev.length >= 6) return prev;
       if (prev === "0") return d;
@@ -150,10 +181,12 @@ export default function CalcApp() {
   }, []);
 
   const backspace = useCallback(() => {
+    playTone(440, 0.06);
     setInput((prev) => prev.slice(0, -1));
   }, []);
 
   const clearInput = useCallback(() => {
+    playTone(440, 0.06);
     setInput("");
   }, []);
 
@@ -166,6 +199,7 @@ export default function CalcApp() {
         setInput("");
         return;
       }
+      playTone(880, 0.08);
       setCounts((prev) => ({ ...prev, [kind]: prev[kind] + qty }));
       setInput("");
     },
@@ -173,14 +207,53 @@ export default function CalcApp() {
   );
 
   const resetInput = useCallback(() => {
+    playTone(330, 0.1);
     setCounts(EMPTY_COUNTS);
     setInput("");
   }, []);
+
+  /* ---------- 长按单位键清空对应数量 ---------- */
+
+  const longPress = useRef<{ timer: number | null; fired: boolean }>({
+    timer: null,
+    fired: false,
+  });
+
+  const startLongPress = useCallback((kind: UnitKind) => {
+    longPress.current.fired = false;
+    if (longPress.current.timer != null) window.clearTimeout(longPress.current.timer);
+    longPress.current.timer = window.setTimeout(() => {
+      longPress.current.timer = null;
+      longPress.current.fired = true;
+      setCounts((prev) => ({ ...prev, [kind]: 0 }));
+      playTone(196, 0.18, 0.16);
+      if ("vibrate" in navigator) navigator.vibrate(60);
+    }, 500);
+  }, []);
+
+  const cancelLongPress = useCallback(() => {
+    if (longPress.current.timer != null) {
+      window.clearTimeout(longPress.current.timer);
+      longPress.current.timer = null;
+    }
+  }, []);
+
+  const onUnitClick = useCallback(
+    (kind: UnitKind) => {
+      if (longPress.current.fired) {
+        longPress.current.fired = false;
+        return;
+      }
+      pressUnit(kind);
+    },
+    [pressUnit],
+  );
 
   /* ---------- 保存与删除 ---------- */
 
   const saveToday = useCallback(() => {
     if (isEmpty || !todayKey) return;
+    playTone(1046, 0.12);
 
     const record: DailyRecord = {
       id: makeId(),
@@ -239,7 +312,12 @@ export default function CalcApp() {
             <button
               key={u.kind}
               className={`${styles.unitBtn} ${styles["unit-" + u.kind]}`}
-              onClick={() => pressUnit(u.kind)}
+              onClick={() => onUnitClick(u.kind)}
+              onPointerDown={() => startLongPress(u.kind)}
+              onPointerUp={cancelLongPress}
+              onPointerLeave={cancelLongPress}
+              onPointerCancel={cancelLongPress}
+              onContextMenu={(e) => e.preventDefault()}
             >
               {counts[u.kind] > 0 && (
                 <span className={styles.unitBadge}>×{counts[u.kind]}</span>
@@ -339,7 +417,9 @@ export default function CalcApp() {
           )}
         </div>
 
-        <p className={styles.footNote}>数据保存在本机浏览器，不联网。</p>
+        <p className={styles.footNote}>
+          数据保存在本机浏览器 · 长按单位键可清空该项
+        </p>
       </div>
     </main>
   );
