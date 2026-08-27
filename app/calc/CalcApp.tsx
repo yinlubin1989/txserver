@@ -342,6 +342,9 @@ export default function CalcApp() {
           <button className={`${styles.key} ${styles.keyFn}`} onClick={clearInput}>
             C
           </button>
+          <button className={styles.key} onClick={() => pressDigit("0")}>
+            0
+          </button>
           <button className={`${styles.key} ${styles.keyFn}`} onClick={backspace}>
             ⌫
           </button>
