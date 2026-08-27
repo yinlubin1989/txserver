@@ -29,9 +29,6 @@ const UNITS: UnitDef[] = [
   { kind: "redSmall", label: "小红", emoji: "🧧", unit: -40 },
 ];
 
-const QUICK_KEYS = ["10", "11", "12", "13", "14", "15", "16"];
-const DIGIT_KEYS = ["3", "4", "5", "6", "7", "8", "9", "0"];
-
 const STORAGE_KEY = "txserver-calc-daily-v2";
 
 /* ---------- 日期与数字格式化 ---------- */
@@ -181,11 +178,6 @@ export default function CalcApp() {
       if (prev === "0") return d;
       return prev + d;
     });
-  }, []);
-
-  const setQuick = useCallback((v: string) => {
-    playTone(660, 0.06);
-    setInput(v);
   }, []);
 
   const backspace = useCallback(() => {
@@ -342,12 +334,7 @@ export default function CalcApp() {
 
         {/* 数字键盘 */}
         <div className={styles.keypad}>
-          {QUICK_KEYS.map((v) => (
-            <button key={v} className={styles.key} onClick={() => setQuick(v)}>
-              {v}
-            </button>
-          ))}
-          {DIGIT_KEYS.map((d) => (
+          {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
             <button key={d} className={styles.key} onClick={() => pressDigit(d)}>
               {d}
             </button>
