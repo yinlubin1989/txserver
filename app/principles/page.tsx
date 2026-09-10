@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { BackLink, SiteFooter } from "../components/ui/PageKit";
 
 export const metadata: Metadata = {
   title: "原则",
@@ -51,47 +51,31 @@ const principles = [
 
 export default function PrinciplesPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center bg-white px-6 py-12 text-black sm:py-20">
+    <main className="flex min-h-dvh flex-col items-center bg-white px-5 pb-8 pt-6 text-neutral-800 sm:px-8 sm:pt-10">
       <div className="w-full max-w-2xl">
-        <Link
-          href="/"
-          className="text-xs font-medium uppercase tracking-[0.22em] text-neutral-400 transition-colors duration-200 hover:text-black"
-        >
-          HOME
-        </Link>
+        <BackLink />
 
-        <h1 className="mt-10 text-2xl font-light tracking-[0.08em] sm:text-3xl">
+        <h1 className="mt-8 text-3xl font-medium tracking-[0.08em] sm:mt-10 sm:text-4xl">
           原则
         </h1>
-        <p className="mt-2 text-sm leading-relaxed tracking-wide text-neutral-400">
+        <p className="mt-3 text-base leading-7 tracking-wide text-neutral-600">
           关系中的共识与边界
         </p>
 
-        <div className="mt-12 space-y-10">
+        <div className="mt-10 divide-y divide-neutral-100 border-y border-neutral-200 sm:mt-12">
           {principles.map((p) => (
-            <section key={p.label}>
-              <h2 className="text-sm font-medium uppercase tracking-[0.15em] text-neutral-400">
+            <section key={p.label} className="py-7 sm:py-8">
+              <h2 className="text-base font-semibold tracking-[0.06em] text-neutral-800">
                 {p.label}
               </h2>
-              <p className="mt-2 text-base leading-8 text-neutral-700">
+              <p className="mt-3 text-base leading-8 text-neutral-700">
                 {p.text}
               </p>
             </section>
           ))}
         </div>
 
-        <div className="mt-16 h-px w-8 bg-neutral-200" />
-
-        <footer className="mt-10 text-center">
-          <a
-            href="https://beian.miit.gov.cn/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[11px] text-neutral-300 transition-colors duration-300 hover:text-neutral-500"
-          >
-            京ICP备2025157289号-2
-          </a>
-        </footer>
+        <SiteFooter className="mt-10" />
       </div>
     </main>
   );

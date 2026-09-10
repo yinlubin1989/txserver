@@ -1,88 +1,88 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import PhotoGrid from "./PhotoGrid";
+import PhotoGrid, { type Photo } from "./PhotoGrid";
 import type { PhotosResponse } from "@/lib/photos";
-
-interface Photo {
-  name: string;
-  url: string;
-}
+import { BackLink, Button, PageShell, SiteFooter, StatusMessage } from "@/app/components/ui/PageKit";
 
 export default function PhotosPage() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [requestId, setRequestId] = useState(0);
+  const galleryRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    fetch("/api/photos")
-      .then((res) => res.json())
-      .then((data: PhotosResponse) => {
-        setPhotos(
-          data.photos.map(({ name }) => ({
-            name,
-            url: `/api/photos?file=${encodeURIComponent(name)}`,
-          })),
-        );
+    const controller = new AbortController();
+    fetch("/api/photos", { signal: controller.signal })
+      .catch(() => { throw new Error("网络异常，照片加载失败，请重试"); })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("照片加载失败，请稍后重试");
+        const data: PhotosResponse = await response.json().catch(() => {
+          throw new Error("照片列表格式异常，请稍后重试");
+        });
+        if (
+          !data || !Array.isArray(data.photos) ||
+          data.photos.some((photo) => !photo || typeof photo.name !== "string" || typeof photo.mtime !== "number")
+        ) {
+          throw new Error("照片列表格式异常，请稍后重试");
+        }
+        return data.photos.map(({ name }) => ({
+          name,
+          url: `/api/photos?file=${encodeURIComponent(name)}`,
+        }));
       })
-      .finally(() => setLoading(false));
-  }, []);
+      .then((list) => {
+        if (!controller.signal.aborted) setPhotos(list);
+      })
+      .catch((reason) => {
+        if (!controller.signal.aborted) {
+          setError(reason instanceof Error ? reason.message : "照片加载失败，请稍后重试");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [requestId]);
 
   return (
-    <main className="min-h-screen bg-white px-6 pb-16 text-black">
-      <div className="mx-auto max-w-5xl">
-        <div className="flex items-center justify-between py-10">
-          <Link
-            href="/"
-            className="text-xs tracking-[0.2em] text-neutral-400 transition-colors duration-300 hover:text-black"
-          >
-            ← HOME
-          </Link>
-          <div className="flex items-center gap-4">
-            <span className="text-xs tracking-[0.2em] text-neutral-300">
-              {loading ? "..." : `${photos.length} PHOTOS`}
-            </span>
-            <Link
-              href="/photos/upload"
-              className="border border-black px-4 py-1.5 text-[11px] tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
-            >
-              + UPLOAD
-            </Link>
-          </div>
+    <PageShell width="wide">
+      <BackLink />
+      <header className="flex flex-wrap items-end justify-between gap-5 border-b border-neutral-200 py-8 sm:py-10">
+        <div>
+          <p className="text-xs tracking-[0.24em] text-neutral-500">PHOTOS</p>
+          <h1 className="mt-3 text-3xl font-light tracking-[0.08em]">相册</h1>
+          <p className="mt-3 text-sm text-neutral-600">{loading ? "正在读取照片…" : error ? "照片暂时无法显示" : `${photos.length} 张照片，点击查看大图`}</p>
         </div>
+        <Link href="/photos/upload" className="inline-flex min-h-11 items-center justify-center border border-neutral-800 px-5 text-sm text-neutral-800 transition-colors hover:bg-neutral-900 hover:text-white">
+          上传照片 <span aria-hidden="true" className="ml-3">＋</span>
+        </Link>
+      </header>
 
+      <section ref={galleryRef} tabIndex={-1} className="flex-1 py-8" aria-label="照片列表" aria-busy={loading}>
         {loading ? (
-          <div className="flex items-center justify-center py-32">
-            <p className="text-sm tracking-wide text-neutral-300">加载中...</p>
+          <div className="py-20 text-center"><StatusMessage>照片加载中…</StatusMessage></div>
+        ) : error ? (
+          <div className="py-16 text-center">
+            <StatusMessage kind="error">{error}</StatusMessage>
+            <Button variant="secondary" className="mt-5" onClick={() => { setLoading(true); setError(""); setRequestId((value) => value + 1); }}>重新加载</Button>
           </div>
         ) : photos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-32">
-            <p className="text-sm tracking-wide text-neutral-300">暂无照片</p>
-            <Link
-              href="/photos/upload"
-              className="mt-4 border border-black px-6 py-2 text-xs tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
-            >
-              上传第一张 →
-            </Link>
+          <div className="border border-dashed border-neutral-300 px-5 py-20 text-center">
+            <p className="text-base text-neutral-700">相册里还没有照片</p>
+            <p className="mt-2 text-sm text-neutral-500">从第一张照片开始记录。</p>
+            <Link href="/photos/upload" className="mt-5 inline-flex min-h-11 items-center border-b border-neutral-600 text-sm text-neutral-800">上传第一张 <span aria-hidden="true" className="ml-3">→</span></Link>
           </div>
         ) : (
-          <PhotoGrid
-            photos={photos}
-            onDelete={(name) => setPhotos((prev) => prev.filter((p) => p.name !== name))}
-          />
+          <PhotoGrid photos={photos} onDelete={(name) => {
+            setPhotos((previous) => previous.filter((photo) => photo.name !== name));
+            requestAnimationFrame(() => galleryRef.current?.focus());
+          }} />
         )}
-
-        <footer className="mt-16 pb-6 text-center">
-          <a
-            href="https://beian.miit.gov.cn/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[11px] text-neutral-300 transition-colors duration-300 hover:text-neutral-500"
-          >
-            京ICP备2025157289号-2
-          </a>
-        </footer>
-      </div>
-    </main>
+      </section>
+      <SiteFooter />
+    </PageShell>
   );
 }

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Metadata } from "next";
-import Link from "next/link";
+import { BackLink } from "../components/ui/PageKit";
 
 export const metadata: Metadata = {
   title: "RedGreenSign 使用指南",
@@ -43,57 +43,40 @@ export default function RgsDocPage() {
     <main className="min-h-dvh bg-[#f6f4ef] text-[#171717]">
       <div className="mx-auto flex w-full max-w-7xl gap-10 px-5 py-6 sm:px-8 lg:px-10 lg:py-10">
         <aside className="hidden w-64 shrink-0 xl:block">
-          <div className="sticky top-8 border-l border-black/10 pl-5">
+          <div className="sticky top-8 max-h-[calc(100dvh-4rem)] overflow-y-auto border-l border-black/10 pl-5 pr-2">
             <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#777168]">
               RGS DOC
             </p>
-            <nav className="mt-6 flex flex-col gap-3 text-sm leading-5">
-              {toc.map((heading) => (
-                <a
-                  key={heading.id}
-                  href={`#${heading.id}`}
-                  className={`transition-colors duration-200 hover:text-[#0d6b43] ${
-                    heading.level === 3 ? "pl-4 text-[#777168]" : "text-[#2a2926]"
-                  }`}
-                >
-                  {heading.text}
-                </a>
-              ))}
-            </nav>
+            <TableOfContents />
           </div>
         </aside>
 
         <div className="min-w-0 flex-1">
           <header className="border-b border-black/10 pb-8">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Link
-                href="/"
-                className="text-xs font-medium uppercase tracking-[0.22em] text-[#777168] transition-colors duration-200 hover:text-black"
-              >
-                HOME
-              </Link>
+              <BackLink />
               <div className="flex flex-wrap gap-2">
                 <a
                   href={appDownload.href}
                   download={appDownload.filename}
-                  className="border border-[#0d6b43] bg-[#0d6b43] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-white transition-all duration-200 hover:bg-[#095837]"
+                  className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#0d6b43] bg-[#0d6b43] px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-[#095837]"
                 >
                   下载 DMG
                 </a>
                 <a
                   href="/rgsdoc/USER_GUIDE.md"
-                  className="border border-black/20 px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] transition-all duration-200 hover:border-black hover:bg-black hover:text-white"
+                  className="inline-flex min-h-11 items-center justify-center rounded-lg border border-black/20 px-4 py-2 text-sm font-medium transition-colors duration-200 hover:border-black hover:bg-black hover:text-white"
                 >
                   Markdown
                 </a>
               </div>
             </div>
 
-            <div className="mt-12 max-w-3xl">
+            <div className="mt-8 max-w-3xl sm:mt-10">
               <p className="text-sm font-medium uppercase tracking-[0.22em] text-[#777168]">
                 RedGreenSign
               </p>
-              <h1 className="mt-4 text-[2.7rem] font-semibold leading-[1.05] tracking-normal text-[#111] sm:text-6xl">
+              <h1 className="mt-4 break-words text-[2rem] font-semibold leading-tight tracking-normal text-[#111] sm:text-5xl">
                 {title}
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-8 text-[#55514a] sm:text-lg">
@@ -101,12 +84,12 @@ export default function RgsDocPage() {
               </p>
             </div>
 
-            <section className="mt-8 max-w-3xl border border-[#0d6b43]/30 bg-white/55 p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
+            <section className="mt-8 max-w-3xl rounded-xl border border-[#0d6b43]/30 bg-white/55 p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
               <div className="min-w-0">
                 <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#0d6b43]">
                   Mac 安装包
                 </p>
-                <h2 className="mt-2 text-xl font-semibold leading-tight tracking-normal text-[#171717]">
+                <h2 className="mt-2 break-words text-xl font-semibold leading-snug tracking-normal text-[#171717]">
                   RedGreenSign-macos.dmg
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-[#55514a]">
@@ -116,13 +99,13 @@ export default function RgsDocPage() {
               <a
                 href={appDownload.href}
                 download={appDownload.filename}
-                className="mt-4 inline-flex w-full items-center justify-center border border-[#0d6b43] bg-[#0d6b43] px-5 py-3 text-sm font-medium text-white transition-all duration-200 hover:bg-[#095837] sm:mt-0 sm:w-auto"
+                className="mt-4 inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-lg border border-[#0d6b43] bg-[#0d6b43] px-5 py-3 text-sm font-medium text-white transition-colors duration-200 hover:bg-[#095837] sm:mt-0 sm:w-auto"
               >
                 下载 App
               </a>
             </section>
 
-            <div className="mt-8 grid gap-3 sm:grid-cols-4">
+            <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
               <StatusLight color="#18864f" label="绿灯常亮" value="空闲或完成" />
               <StatusLight color="#c89016" label="黄灯闪烁" value="正在执行" />
               <StatusLight color="#c9413b" label="红灯常亮" value="等待授权" />
@@ -130,7 +113,16 @@ export default function RgsDocPage() {
             </div>
           </header>
 
-          <article className="max-w-3xl py-10 sm:py-12">
+          <details className="mt-6 rounded-xl border border-black/15 bg-white/55 xl:hidden">
+            <summary className="min-h-11 cursor-pointer px-5 py-3 text-sm font-medium text-[#2a2926]">
+              文档目录
+            </summary>
+            <div className="border-t border-black/10 px-4 pb-3">
+              <TableOfContents />
+            </div>
+          </details>
+
+          <article className="max-w-3xl break-words py-10 sm:py-12">
             {articleBlocks.map((block, index) => (
               <MarkdownRenderer block={block} key={`${block.type}-${index}`} />
             ))}
@@ -138,6 +130,24 @@ export default function RgsDocPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function TableOfContents() {
+  return (
+    <nav aria-label="文档目录" className="mt-3 flex flex-col text-sm leading-6">
+      {toc.map((heading) => (
+        <a
+          key={heading.id}
+          href={`#${heading.id}`}
+          className={`flex min-h-11 items-center rounded-md py-2 pr-2 transition-colors duration-200 hover:bg-black/5 hover:text-[#0d6b43] ${
+            heading.level === 3 ? "pl-4 text-[#625c54]" : "pl-2 text-[#2a2926]"
+          }`}
+        >
+          {heading.text}
+        </a>
+      ))}
+    </nav>
   );
 }
 
@@ -151,16 +161,16 @@ function StatusLight({
   value: string;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-3 border border-black/10 bg-white/45 px-4 py-3">
+    <div className="flex min-w-0 items-center gap-3 rounded-lg border border-black/10 bg-white/45 px-3 py-3 sm:px-4">
       <span
         className="size-3 shrink-0 rounded-full shadow-[0_0_0_4px_rgba(0,0,0,0.04)]"
         style={{ backgroundColor: color }}
       />
       <span className="min-w-0">
-        <span className="block truncate text-sm font-medium text-[#1d1c19]">
+        <span className="block text-sm font-medium text-[#1d1c19]">
           {label}
         </span>
-        <span className="block truncate text-xs leading-5 text-[#777168]">
+        <span className="block text-xs leading-5 text-[#625c54]">
           {value}
         </span>
       </span>

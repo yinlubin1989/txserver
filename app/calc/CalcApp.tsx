@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BackLink, StatusMessage } from "../components/ui/PageKit";
 import styles from "./calc.module.css";
 
 type UnitKind = "big" | "small" | "redBig" | "redSmall";
@@ -107,6 +108,10 @@ export default function CalcApp() {
   const [records, setRecords] = useState<DailyRecord[]>([]);
   const [counts, setCounts] = useState<Record<UnitKind, number>>(EMPTY_COUNTS);
   const [input, setInput] = useState<string>("");
+  const [saveStatus, setSaveStatus] = useState<{
+    kind: "success" | "error";
+    message: string;
+  } | null>(null);
 
   // 首次加载：读本地记录（在回调中 setState，避免 effect 内同步 setState）
   useEffect(() => {
@@ -172,6 +177,7 @@ export default function CalcApp() {
   /* ---------- 输入处理 ---------- */
 
   const pressDigit = useCallback((d: string) => {
+    setSaveStatus(null);
     playTone(660, 0.06);
     setInput((prev) => {
       if (prev.length >= 6) return prev;
@@ -194,6 +200,7 @@ export default function CalcApp() {
 
   const pressUnit = useCallback(
     (kind: UnitKind) => {
+      setSaveStatus(null);
       const qty = input === "" ? 1 : parseInt(input, 10);
       if (!Number.isFinite(qty) || qty <= 0) {
         setInput("");
@@ -207,6 +214,7 @@ export default function CalcApp() {
   );
 
   const resetInput = useCallback(() => {
+    setSaveStatus(null);
     playTone(330, 0.1);
     setCounts(EMPTY_COUNTS);
     setInput("");
@@ -252,8 +260,7 @@ export default function CalcApp() {
   /* ---------- 保存与删除 ---------- */
 
   const saveToday = useCallback(() => {
-    if (isEmpty || !todayKey) return;
-    playTone(1046, 0.12);
+    if (!ready || isEmpty || !todayKey) return;
 
     const record: DailyRecord = {
       id: makeId(),
@@ -264,19 +271,30 @@ export default function CalcApp() {
       redSmall: counts.redSmall,
       total,
     };
-    setRecords((prev) => [record, ...prev]);
+    const nextRecords = [record, ...records];
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextRecords));
+    } catch {
+      setSaveStatus({ kind: "error", message: "保存失败，浏览器存储暂不可用。当前数量已保留，请重试。" });
+      return;
+    }
+    setRecords(nextRecords);
+    playTone(1046, 0.12);
+    setSaveStatus({ kind: "success", message: `已保存 ${formatDateShort(todayKey)}的记录 ${money(total)}，可继续记下一笔。` });
 
     setCounts(EMPTY_COUNTS);
     setInput("");
-  }, [isEmpty, todayKey, counts, total]);
+  }, [ready, isEmpty, todayKey, counts, total, records]);
 
   const deleteRecord = useCallback((id: string) => {
+    setSaveStatus(null);
     setRecords((prev) => prev.filter((r) => r.id !== id));
   }, []);
 
   const clearHistory = useCallback(() => {
     if (records.length === 0) return;
     if (window.confirm("确定清空所有已保存记录吗？此操作不可撤销。")) {
+      setSaveStatus(null);
       setRecords([]);
     }
   }, [records.length]);
@@ -285,13 +303,27 @@ export default function CalcApp() {
 
   return (
     <main className={styles.page}>
-      <div className={styles.card}>
+      <header className={styles.header}>
+        <BackLink />
+        <div className={styles.heading}>
+          <div>
+            <h1>卖花记账</h1>
+            <p>记下每一笔，收支一目了然。</p>
+          </div>
+          {todayKey && <time dateTime={todayKey}>{formatDateShort(todayKey)}</time>}
+        </div>
+      </header>
+      <div className={styles.workspace}>
+      <section className={styles.card} aria-label="记账计算器">
         {/* 显示屏 */}
         <div className={styles.display}>
-          <span className={styles.displayLabel}>当天合计</span>
+          <span className={styles.displayLabel}>本笔合计</span>
           <span
             className={styles.displayTotal}
             data-negative={total < 0 ? "true" : undefined}
+            data-long={money(total).length > 11 ? "true" : undefined}
+            aria-live="polite"
+            aria-atomic="true"
           >
             {money(total)}
           </span>
@@ -307,7 +339,7 @@ export default function CalcApp() {
         </div>
 
         {/* 四个单位键 */}
-        <div className={styles.units}>
+        <div className={styles.units} aria-describedby="unit-hint">
           {UNITS.map((u) => (
             <button
               key={u.kind}
@@ -318,19 +350,19 @@ export default function CalcApp() {
               onPointerLeave={cancelLongPress}
               onPointerCancel={cancelLongPress}
               onContextMenu={(e) => e.preventDefault()}
+              aria-label={`${u.label}，单价 ${u.unit} 元，当前数量 ${counts[u.kind]}，点击添加，长按清空该项`}
             >
-              {counts[u.kind] > 0 && (
-                <span className={styles.unitBadge}>×{counts[u.kind]}</span>
-              )}
-              <span className={styles.unitEmoji}>{u.emoji}</span>
+              <span className={styles.unitEmoji} aria-hidden="true">{u.emoji}</span>
               <span className={styles.unitLabel}>{u.label}</span>
               <span className={styles.unitPrice}>
                 {u.unit > 0 ? "+" : ""}
                 {u.unit} 元
               </span>
+              <span className={styles.unitBadge}>×{counts[u.kind]}</span>
             </button>
           ))}
         </div>
+        <p className={styles.unitHint} id="unit-hint">长按单位键，清空该项数量。</p>
 
         {/* 数字键盘 */}
         <div className={styles.keypad}>
@@ -339,31 +371,34 @@ export default function CalcApp() {
               {d}
             </button>
           ))}
-          <button className={`${styles.key} ${styles.keyFn}`} onClick={clearInput}>
-            C
+          <button className={`${styles.key} ${styles.keyFn}`} onClick={clearInput} aria-label="C，清除输入数量">
+            <span>C</span><span className={styles.keyCaption}>清除输入</span>
           </button>
           <button className={styles.key} onClick={() => pressDigit("0")}>
             0
           </button>
-          <button className={`${styles.key} ${styles.keyFn}`} onClick={backspace}>
+          <button className={`${styles.key} ${styles.keyFn}`} onClick={backspace} aria-label="退格，删除最后一位数量">
             ⌫
           </button>
         </div>
 
         {/* 保存 / 清零 */}
         <div className={styles.actions}>
-          <button className={styles.saveBtn} onClick={saveToday} disabled={isEmpty}>
-            💾 保存今天
+          <button className={styles.saveBtn} onClick={saveToday} disabled={!ready || isEmpty}>
+            保存今天
           </button>
           <button className={styles.resetBtn} onClick={resetInput}>
-            清零
+            本笔清零
           </button>
         </div>
+        {saveStatus && <StatusMessage kind={saveStatus.kind}>{saveStatus.message}</StatusMessage>}
+        <p className={styles.footNote}>数据保存在本机浏览器，同一天可保存多笔。</p>
+      </section>
 
         {/* 已保存记录 */}
-        <div className={styles.history}>
+        <section className={styles.history} aria-labelledby="history-title">
           <div className={styles.historyHead}>
-            <span>已保存记录</span>
+            <h2 id="history-title">已保存记录</h2>
             <span className={styles.monthTotal}>
               本月合计{" "}
               <b data-negative={monthTotal < 0 ? "true" : undefined}>
@@ -372,11 +407,11 @@ export default function CalcApp() {
             </span>
           </div>
 
-          {records.length === 0 ? (
+          {!ready ? <div className={styles.empty} role="status">正在读取本机记录…</div> : records.length === 0 ? (
             <div className={styles.empty}>
               还没有保存记录。
               <br />
-              输入当天数量后，点上面的「保存今天」。
+              输入数量后，点击「保存今天」。
             </div>
           ) : (
             groups.map(([month, list]) => (
@@ -385,20 +420,22 @@ export default function CalcApp() {
                 <ul className={styles.recordList}>
                   {list.map((r) => (
                     <li key={r.id} className={styles.recordItem}>
-                      <span className={styles.recordDate}>{formatDateShort(r.date)}</span>
-                      <span className={styles.recordDetail}>
-                        大花{r.big} · 小花{r.small} · 大红{r.redBig} · 小红{r.redSmall}
-                      </span>
-                      <span
+                      <div className={styles.recordSummary}>
+                        <time className={styles.recordDate} dateTime={r.date}>{formatDateShort(r.date)}</time>
+                        <span
                         className={styles.recordAmount}
                         data-negative={r.total < 0 ? "true" : undefined}
                       >
                         {money(r.total)}
+                        </span>
+                      </div>
+                      <span className={styles.recordDetail}>
+                        <span>大花 {r.big}</span><span>小花 {r.small}</span><span>大红 {r.redBig}</span><span>小红 {r.redSmall}</span>
                       </span>
                       <button
                         className={styles.recordDel}
                         onClick={() => deleteRecord(r.id)}
-                        aria-label="删除这条"
+                        aria-label={`删除 ${formatDateShort(r.date)} ${money(r.total)}的记录`}
                         title="删除"
                       >
                         ×
@@ -415,11 +452,7 @@ export default function CalcApp() {
               清空所有记录
             </button>
           )}
-        </div>
-
-        <p className={styles.footNote}>
-          数据保存在本机浏览器 · 长按单位键可清空该项
-        </p>
+        </section>
       </div>
     </main>
   );

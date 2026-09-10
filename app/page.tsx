@@ -1,116 +1,64 @@
 import Link from "next/link";
+import { SiteFooter } from "./components/ui/PageKit";
+import styles from "./home.module.css";
+
+const groups = [
+  { title: "工具", english: "TOOLS", links: [
+    { href: "/calc", title: "记账", detail: "每天的收支，一笔一笔记清楚", english: "CALCULATOR" },
+    { href: "/secret", title: "密笺", detail: "留给彼此的私密文字", english: "SECRET" },
+  ] },
+  { title: "内容", english: "COLLECTION", links: [
+    { href: "/books", title: "书架", detail: "翻阅与收藏", english: "BOOKS" },
+    { href: "/photos", title: "相册", detail: "留住日常的片刻", english: "PHOTOS" },
+    { href: "/principles", title: "原则", detail: "关系中的共识与边界", english: "PRINCIPLES" },
+    { href: "/rgsdoc", title: "RGS 文档", detail: "状态灯的安装与使用", english: "RGS DOC" },
+  ] },
+];
+const services = [
+  { href: "/docs/", title: "DOCS", detail: "公共文档" },
+  { href: "/frp/", title: "FRP", detail: "内网访问" },
+  { href: "http://yinlubin.cn:6080", title: "OPENWRT", detail: "路由管理" },
+  { href: "http://yinlubin.cn:6002", title: "RPI", detail: "树莓派" },
+];
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-white px-6 text-black">
-      <div className="flex max-w-lg flex-col items-center gap-10 text-center">
-        <h1 className="text-4xl font-light tracking-[0.15em] sm:text-5xl">
-          LUBIN YIN
-        </h1>
-
-        <p className="text-sm leading-relaxed tracking-wide text-neutral-500">
-          Engineer · Builder · Minimalist
-        </p>
-
-        <ul className="space-y-2 text-sm font-light tracking-wide text-neutral-500">
-          <li>
-            <span className="mr-2 text-neutral-300">tel</span>
-            <a href="tel:13718231649" className="transition-colors duration-300 hover:text-black">
-              13718231649
-            </a>
-          </li>
-          <li>
-            <span className="mr-2 text-neutral-300">mail</span>
-            <a href="mailto:yinlubin1989@gmail.com" className="transition-colors duration-300 hover:text-black">
-              yinlubin1989@gmail.com
-            </a>
-          </li>
-          <li>
-            <span className="mr-2 text-neutral-300">loc</span>
-            <span>北京市石景山区古城</span>
-          </li>
-        </ul>
-
-        <div className="flex flex-wrap justify-center gap-3">
-          <Link
-            href="/calc"
-            className="border border-black px-6 py-2.5 text-xs tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
-          >
-            记账 →
-          </Link>
-          <Link
-            href="/books"
-            className="border border-black px-6 py-2.5 text-xs tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
-          >
-            BOOKS →
-          </Link>
-          <Link
-            href="/photos"
-            className="border border-black px-6 py-2.5 text-xs tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
-          >
-            PHOTOS →
-          </Link>
-          <Link
-            href="/rgsdoc"
-            className="border border-black px-6 py-2.5 text-xs tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
-          >
-            RGS DOC →
-          </Link>
-          <Link
-            href="/principles"
-            className="border border-black px-6 py-2.5 text-xs tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
-          >
-            PRINCIPLES →
-          </Link>
-          <Link
-            href="/secret"
-            className="border border-black px-6 py-2.5 text-xs tracking-[0.25em] text-black transition-all duration-300 hover:bg-black hover:text-white"
-          >
-            SECRET →
-          </Link>
-        </div>
-
-        <div className="flex flex-wrap justify-center gap-3">
-          <Link
-            href="/docs/"
-            className="border border-neutral-300 px-5 py-2 text-xs tracking-[0.15em] text-neutral-400 transition-all duration-300 hover:border-black hover:text-black"
-          >
-            DOCS
-          </Link>
-          <Link
-            href="/frp/"
-            className="border border-neutral-300 px-5 py-2 text-xs tracking-[0.15em] text-neutral-400 transition-all duration-300 hover:border-black hover:text-black"
-          >
-            FRP
-          </Link>
-          <Link
-            href="http://yinlubin.cn:6080"
-            className="border border-neutral-300 px-5 py-2 text-xs tracking-[0.15em] text-neutral-400 transition-all duration-300 hover:border-black hover:text-black"
-          >
-            OPENWRT
-          </Link>
-          <Link
-            href="http://yinlubin.cn:6002"
-            className="border border-neutral-300 px-5 py-2 text-xs tracking-[0.15em] text-neutral-400 transition-all duration-300 hover:border-black hover:text-black"
-          >
-            RPI
-          </Link>
-
-        </div>
-
-        <div className="h-px w-8 bg-neutral-200" />
+    <main className={`site-page ${styles.page}`}>
+      <div className={styles.container}>
+        <header className={styles.identity}>
+          <p className={styles.kicker}>PERSONAL SPACE</p>
+          <h1>LUBIN YIN</h1>
+          <p className={styles.tagline}>Engineer · Builder · Minimalist</p>
+          <address className={styles.contact}>
+            <a href="tel:13718231649"><span>tel</span>13718231649</a>
+            <a href="mailto:yinlubin1989@gmail.com"><span>mail</span>yinlubin1989@gmail.com</a>
+            <p><span>loc</span>北京市石景山区古城</p>
+          </address>
+        </header>
+        <nav aria-label="网站导航" className={styles.navigation}>
+          {groups.map((group) => (
+            <section className={styles.group} key={group.title} aria-label={group.title}>
+              <h2 className={styles.groupTitle}>{group.title}<span>{group.english}</span></h2>
+              <div className={styles.links}>
+                {group.links.map((link) => (
+                  <Link href={link.href} key={link.href} className={styles.link}>
+                    <span className={styles.linkHeading}><span>{link.title}</span><span className={styles.arrow} aria-hidden="true">↗</span></span>
+                    <span className={styles.detail}>{link.detail}</span>
+                    <span className={styles.english}>{link.english}</span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ))}
+          <section className={styles.group} aria-label="服务">
+            <h2 className={styles.groupTitle}>服务<span>SERVICES</span></h2>
+            <div className={styles.services}>
+              {services.map((service) => <a key={service.href} href={service.href} className={styles.service}><span>{service.title}</span><span>{service.detail}</span></a>)}
+            </div>
+          </section>
+        </nav>
+        <SiteFooter />
       </div>
-
-      <footer className="absolute bottom-0 pb-6 text-center">
-        <a
-          href="https://beian.miit.gov.cn/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[11px] text-neutral-300 transition-colors duration-300 hover:text-neutral-500"
-        >
-          京ICP备2025157289号-2
-        </a>
-      </footer>
     </main>
   );
 }

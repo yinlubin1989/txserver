@@ -172,11 +172,10 @@ export default function SecretWorkbench() {
 
   return (
     <div className={styles.workbench}>
-      <div className={styles.modeSwitch} role="tablist" aria-label="选择加密或解密">
+      <div className={styles.modeSwitch} role="group" aria-label="选择加密或解密">
         <button
           type="button"
-          role="tab"
-          aria-selected={mode === "encrypt"}
+          aria-pressed={mode === "encrypt"}
           className={mode === "encrypt" ? styles.activeMode : ""}
           onClick={() => switchMode("encrypt")}
         >
@@ -185,8 +184,7 @@ export default function SecretWorkbench() {
         </button>
         <button
           type="button"
-          role="tab"
-          aria-selected={mode === "decrypt"}
+          aria-pressed={mode === "decrypt"}
           className={mode === "decrypt" ? styles.activeMode : ""}
           onClick={() => switchMode("decrypt")}
         >
@@ -195,7 +193,7 @@ export default function SecretWorkbench() {
         </button>
       </div>
 
-      <div className={styles.paper}>
+      <div className={styles.paper} aria-busy={isWorking}>
         <div className={styles.paperGrain} aria-hidden="true" />
 
         <section className={styles.textPanel} aria-labelledby="source-label">
@@ -312,7 +310,7 @@ export default function SecretWorkbench() {
             spellCheck={false}
           />
           <p className={styles.resultHint}>
-            {mode === "encrypt" ? "可通过微信、邮件等任意方式发送" : "看完后可点击左侧“清空当前内容”"}
+            {mode === "encrypt" ? "可通过微信、邮件等任意方式发送" : "看完后可点击“清空当前内容”"}
           </p>
         </section>
       </div>
