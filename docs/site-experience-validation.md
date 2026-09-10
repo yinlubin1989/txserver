@@ -44,3 +44,11 @@
 - `upload-desktop.png`、`upload-mobile.png`
 
 相册及上传的断言摘要随截图保存在 `media-regression-results.json`。
+
+## 后续：首页入口调整
+
+根据 2026-09-10 的截图反馈，移除首页“原则”和“RGS 文档”卡片；对应页面和直达 URL 保留。
+
+DOCS、FRP 原先使用相对地址，但本地 Next.js 没有 `/docs/`、`/frp/` 路由或重写。首页现改为 `https://yinlubin.cn/docs/` 和 `https://yinlubin.cn/frp/`。两个线上地址均返回 302，跳转到各自的访问验证入口，验证页返回 200；未测试认证后的内容。
+
+本次构建（含 TypeScript）、首页 ESLint 和差异格式检查通过；生产预览在 1440px 与 390px 下无横向溢出，首页内容区只保留书架、相册两个入口，桌面和手机截图已更新。未部署服务器。

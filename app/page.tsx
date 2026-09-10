@@ -10,13 +10,11 @@ const groups = [
   { title: "内容", english: "COLLECTION", links: [
     { href: "/books", title: "书架", detail: "翻阅与收藏", english: "BOOKS" },
     { href: "/photos", title: "相册", detail: "留住日常的片刻", english: "PHOTOS" },
-    { href: "/principles", title: "原则", detail: "关系中的共识与边界", english: "PRINCIPLES" },
-    { href: "/rgsdoc", title: "RGS 文档", detail: "状态灯的安装与使用", english: "RGS DOC" },
   ] },
 ];
 const services = [
-  { href: "/docs/", title: "DOCS", detail: "公共文档" },
-  { href: "/frp/", title: "FRP", detail: "内网访问" },
+  { href: "https://yinlubin.cn/docs/", title: "DOCS", detail: "公共文档" },
+  { href: "https://yinlubin.cn/frp/", title: "FRP", detail: "内网访问" },
   { href: "http://yinlubin.cn:6080", title: "OPENWRT", detail: "路由管理" },
   { href: "http://yinlubin.cn:6002", title: "RPI", detail: "树莓派" },
 ];
