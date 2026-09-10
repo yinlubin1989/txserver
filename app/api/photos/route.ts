@@ -4,6 +4,7 @@ import { join, extname } from "node:path";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import type { PhotosResponse } from "@/lib/photos";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,9 +52,9 @@ export async function GET(request: NextRequest) {
         return { name, mtime: 0 };
       }
     });
-    return NextResponse.json({ photos });
+    return NextResponse.json<PhotosResponse>({ photos });
   } catch {
-    return NextResponse.json({ photos: [] });
+    return NextResponse.json<PhotosResponse>({ photos: [] });
   }
 }
 

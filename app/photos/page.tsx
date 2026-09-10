@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import PhotoGrid from "./PhotoGrid";
+import type { PhotosResponse } from "@/lib/photos";
 
 interface Photo {
   name: string;
@@ -16,12 +17,11 @@ export default function PhotosPage() {
   useEffect(() => {
     fetch("/api/photos")
       .then((res) => res.json())
-      .then((data) => {
-        const list = (data.photos ?? []) as string[];
+      .then((data: PhotosResponse) => {
         setPhotos(
-          list.map((name) => ({
+          data.photos.map(({ name }) => ({
             name,
-            url: `/api/photos?file=${name}`,
+            url: `/api/photos?file=${encodeURIComponent(name)}`,
           })),
         );
       })

@@ -55,6 +55,7 @@ export default function UploadForm() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setError("");
     setUrl("");
 
@@ -82,7 +83,7 @@ export default function UploadForm() {
       setUrl(data.url);
       setUploads((current) => [data.upload, ...current]);
       setFile(null);
-      event.currentTarget.reset();
+      form.reset();
     } catch {
       setError("网络异常，上传失败");
     } finally {
