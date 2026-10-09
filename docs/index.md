@@ -6,6 +6,7 @@
 |------|------|------|
 | frps | frp 内网穿透服务端 | [frps 文档](/docs/frp.html) |
 | txserver | Next.js 主站服务 | - |
+| AI Passport 对讲 | 跨地 Wi-Fi 对讲中继与使用统计 | [中继与后台管理](/docs/ai-passport-intercom.html) |
 | Hermes Studio | Hermes Agent Web 管理界面 | [打开 Hermes Studio](http://82.157.107.78:8648/) |
 
 ## 文档目录
@@ -14,6 +15,8 @@
 - [FRP 代理穿透配置](frp-proxy.md) — 所有 FRP 代理映射记录
 - [公共图片上传接口](upload-api.md) — 图片上传 API 接口文档
 - [Stories 后端接口](stories-backend-prompt.md) — Stories 只读文档接口说明
+
+- [AI Passport 对讲中继与后台管理](ai-passport-intercom.md) — 中继地址、管理面板与运维说明
 
 ## 服务器信息
 
