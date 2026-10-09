@@ -1,0 +1,36 @@
+{
+  "links": [
+    {
+      "title": "首页",
+      "href": "/docs/"
+    },
+    {
+      "title": "frp 内网穿透",
+      "href": "/docs/frp.html"
+    },
+    {
+      "title": "frp 代理配置",
+      "href": "/docs/frp-proxy.html"
+    },
+    {
+      "title": "图片上传接口",
+      "href": "/docs/upload-api.html"
+    },
+    {
+      "title": "Stories 接口",
+      "href": "/docs/stories-backend-prompt.html"
+    },
+    {
+      "title": "Hermes Studio",
+      "href": "http://82.157.107.78:8648/"
+    },
+    {
+      "title": "对讲中继与后台",
+      "href": "/docs/ai-passport-intercom.html"
+    },
+    {
+      "title": "主站",
+      "href": "https://yinlubin.cn"
+    }
+  ]
+}
