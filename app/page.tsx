@@ -10,6 +10,7 @@ const groups = [
 const services = [
   { href: "https://yinlubin.cn/docs/", title: "DOCS", detail: "公共文档" },
   { href: "https://yinlubin.cn/frp/", title: "FRP", detail: "内网访问" },
+  { href: "https://yinlubin.cn/clash/", title: "CLASH", detail: "代理面板" },
   { href: "http://yinlubin.cn:6080", title: "OPENWRT", detail: "路由管理" },
   { href: "http://yinlubin.cn:6002", title: "RPI", detail: "树莓派" },
 ];
