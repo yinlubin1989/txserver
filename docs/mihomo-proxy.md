@@ -47,6 +47,23 @@ systemctl status subconverter
 systemctl restart subconverter
 ```
 
+## Web 控制面板（MetaCubeXD）
+
+面板已部署到主站，浏览器直接访问即可，无需 SSH 隧道：
+
+| 项目 | 值 |
+|------|-----|
+| 面板 | MetaCubeXD v1.273.1 |
+| 访问地址 | https://yinlubin.cn/clash/ |
+| 密码门禁 | 与 /docs、/frp 共用同一密码门禁 |
+| 安装位置 | /etc/mihomo/ui（mihomo `external-ui`） |
+| 后端 API | 同域 `https://yinlubin.cn/clash/`（nginx 反代到 `127.0.0.1:9090`） |
+
+- **功能**：查看/测速/切换节点、查看连接与日志、实时流量与内存。
+- **使用**：首次访问输入门禁密码后自动连接 mihomo 控制 API，无需手动配置后端地址。
+- **后端地址来源**：`/etc/mihomo/ui/config.js` 中 `defaultBackendURL` 指向 `https://yinlubin.cn/clash`；nginx 的 `location /clash/` 反代到 `127.0.0.1:9090/`（含 WebSocket 升级）。
+- 面板仍可直接通过本机 `http://127.0.0.1:9090/ui` 访问（SSH 隧道），两种方式并行可用。
+
 ## 使用代理
 
 代理监听本机 `127.0.0.1:7890`，让其他命令走代理：
