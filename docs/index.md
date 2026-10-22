@@ -8,6 +8,7 @@
 | txserver | Next.js 主站服务 | - |
 | AI Passport 对讲 | 跨地 Wi-Fi 对讲中继与使用统计 | [中继与后台管理](/docs/ai-passport-intercom.html) |
 | Hermes Studio | Hermes Agent Web 管理界面 | [打开 Hermes Studio](http://82.157.107.78:8648/) |
+| Mihomo 代理 | Clash Meta 代理服务（订阅/节点管理） | [使用文档](/docs/mihomo-proxy.html) |
 
 ## 文档目录
 
@@ -17,6 +18,7 @@
 - [Stories 后端接口](stories-backend-prompt.md) — Stories 只读文档接口说明
 
 - [AI Passport 对讲中继与后台管理](ai-passport-intercom.md) — 中继地址、管理面板与运维说明
+- [Mihomo 代理服务使用文档](mihomo-proxy.md) — 订阅管理、节点切换与代理出口
 
 ## 服务器信息
 
