@@ -3,12 +3,7 @@ import { SiteFooter } from "./components/ui/PageKit";
 import styles from "./home.module.css";
 
 const groups = [
-  { title: "工具", english: "TOOLS", links: [
-    { href: "/calc", title: "记账", detail: "每天的收支，一笔一笔记清楚", english: "CALCULATOR" },
-    { href: "/secret", title: "密笺", detail: "留给彼此的私密文字", english: "SECRET" },
-  ] },
   { title: "内容", english: "COLLECTION", links: [
-    { href: "/books", title: "书架", detail: "翻阅与收藏", english: "BOOKS" },
     { href: "/photos", title: "相册", detail: "留住日常的片刻", english: "PHOTOS" },
   ] },
 ];
