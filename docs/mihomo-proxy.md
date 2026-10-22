@@ -47,6 +47,29 @@ systemctl status subconverter
 systemctl restart subconverter
 ```
 
+## 开关代理（快捷命令）
+
+服务器上内置了三个快捷命令，比 `systemctl` 更直观：
+
+```bash
+proxy-on        # 开启代理，并自动测试连通性
+proxy-off       # 关闭代理
+proxy-status    # 查看状态：服务、节点数、当前节点、连通性
+```
+
+`proxy-status` 示例输出：
+
+```
+mihomo 服务: active
+代理端口 7890: 监听中
+已加载节点: 52
+当前节点: 日本-01 S 1.0x
+走代理测试 Google: 204
+```
+
+- 三个命令本质是 `systemctl start/stop mihomo` 的封装，位于 `/usr/local/bin/`，任何路径、任何 shell 下都能直接调用。
+- ⚠️ 关闭代理后，codex、访问 GitHub/Google 等走代理的操作都会失败（服务器直连国外被墙），一般无需关闭。若只想让单条命令不走代理，用 `unset HTTPS_PROXY HTTP_PROXY ALL_PROXY; <命令>`。
+
 ## Web 控制面板（MetaCubeXD）
 
 面板已部署到主站，浏览器直接访问即可，无需 SSH 隧道：
