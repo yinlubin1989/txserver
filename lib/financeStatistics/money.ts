@@ -12,4 +12,11 @@ export function cents(value: string): number {
   return safe(negative ? -result : result);
 }
 export function sum(values: number[]) { return values.reduce((total, value) => safe(total + value), 0); }
+export function multiply(unitPriceCents: number, quantity: number) {
+  const product = BigInt(safe(unitPriceCents)) * BigInt(safe(quantity));
+  if (product > BigInt(Number.MAX_SAFE_INTEGER) || product < BigInt(Number.MIN_SAFE_INTEGER)) {
+    throw new FinanceError('INVALID_EXTRACTION', '金额超出可安全计算范围。', 502);
+  }
+  return Number(product);
+}
 export function money(value: number) { return `${value < 0 ? '-' : ''}${Math.floor(Math.abs(value) / 100)}.${String(Math.abs(value) % 100).padStart(2, '0')}`; }

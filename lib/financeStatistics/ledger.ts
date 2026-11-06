@@ -1,12 +1,13 @@
 import { FinanceError } from './financeError';
-import { cents, safe, sum, money } from './money';
+import { cents, safe, sum, money, multiply } from './money';
+import { incomeChecks, verifyIncomeTotalCoverage } from './incomeChecks';
 import { applyCommissionPolicy, type CalculatedEntry, type CommissionCheck } from './commissionPolicy';
 export { FinanceError } from './financeError';
 export { cents } from './money';
 export type Category = 'income' | 'commission' | 'redPacket' | 'purchase' | 'supplies' | 'other';
 export type Item = { id: string; category: Category; label: string; amount: string | null; unitPrice: string | null; quantity: number | null; quantityUnit: string | null; source: string; includedIn: string | null; inclusionSource: string | null; commissionFor: string | null };
-type Check = { amount: string; itemIds: string[]; source: string };
-type RecordEntry = { year: number | null; month: number; day: number; source: string; items: Item[]; checks: Check[] };
+export type Check = { amount: string; itemIds: string[]; source: string };
+export type RecordEntry = { year: number | null; month: number; day: number; source: string; items: Item[]; checks: Check[] };
 type Warning = { code: string; date: string; message: string; severity: 'review' | 'info' };
 export type Detail = { label: string; category: Category; amountCents: number; unitPriceCents: number | null; quantity: number | null; quantityUnit: string | null; source: string; included: boolean; accountingNote: string | null };
 type DailyRow = { day: number; incomeCents: number; expenseCents: number; profitCents: number; details: Detail[]; commissionCheck: CommissionCheck | null };
@@ -158,6 +159,7 @@ function buildBreakdown(rows: DailyRow[], incomeCents: number, expenseCents: num
 }
 export function calculateLedger(raw: unknown, text: string) {
   const records = validate(raw, text);
+  verifyIncomeTotalCoverage(records, text);
   const months = new Set(records.map(record => record.month));
   const years = new Set(records.map(record => record.year).filter(year => year !== null));
   if (months.size !== 1 || years.size > 1) throw new FinanceError('MULTIPLE_MONTHS', '请每次粘贴一个月的账目。');
@@ -179,7 +181,7 @@ export function calculateLedger(raw: unknown, text: string) {
       for (const item of record.items) {
         let amount = item.amount === null ? 0 : cents(item.amount);
         if (item.unitPrice !== null && item.quantity !== null) {
-          const computed = safe(cents(item.unitPrice) * item.quantity);
+          const computed = multiply(cents(item.unitPrice), item.quantity);
           amount = computed;
         } else if (item.amount === null && item.category !== 'redPacket' && item.category !== 'commission') blankDates.add(date);
         const detail: Detail = {
@@ -206,9 +208,15 @@ export function calculateLedger(raw: unknown, text: string) {
     }
     for (const { record, recordIndex } of dayRecords) {
       const amounts = new Map(policy.entries.filter(entry => entry.recordIndex === recordIndex).map(entry => [entry.item.id, entry.detail.included ? 0 : entry.detail.amountCents]));
-      for (const check of record.checks) {
+      const reconciled = incomeChecks(record);
+      for (const check of reconciled.checks) {
         const computed = sum(check.itemIds.map(id => amounts.get(id)!));
-        if (computed !== cents(check.amount)) warnings.push({ code: 'TOTAL_MISMATCH', date, severity: 'info', message: `${date}「${check.source}」按明细计为${money(computed)}元，与原文合计相差${money(safe(computed - cents(check.amount)))}元。` });
+        const stated = cents(check.amount);
+        if (computed === stated) continue;
+        if (reconciled.incomeChecks.has(check)) {
+          const difference = sum([computed, -stated]);
+          warnings.push({ code: 'INCOME_TOTAL_MISMATCH', date, severity: 'review', message: `${date}原文收入合计${money(stated)}元，按全部收入明细重算为${money(computed)}元，比原文${difference > 0 ? '多' : '少'}${money(Math.abs(difference))}元。当前按明细计入，无法确定是明细还是合计记错，请核对后修改原文重新统计。` });
+        } else warnings.push({ code: 'TOTAL_MISMATCH', date, severity: 'info', message: `${date}「${check.source}」按明细计为${money(computed)}元，与原文合计相差${money(safe(computed - stated))}元。` });
       }
     }
     const details = [...policy.entries.map(entry => entry.detail), ...policy.generated];
