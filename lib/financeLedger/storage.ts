@@ -35,7 +35,7 @@ async function ready() {
       // One-time compatibility migration: pre-visibility shares were already public.
       await SavedBill.updateMany({ visibility: { $exists: false } }, [{ $set: {
         visibility: { $cond: [{ $eq: [{ $type: '$shareToken' }, 'string'] }, 'public', 'private'] },
-      } }], { maxTimeMS: 10000 });
+      } }], { maxTimeMS: 10000, updatePipeline: true });
     })().catch(error => { initialization = null; throw error; });
   }
   await initialization;
@@ -67,13 +67,13 @@ export const mongoLedgerStorage: LedgerStorage = {
   async assignShareToken(ownerHash, id, token) {
     await ready();
     // Publishing and token allocation are atomic, including concurrent private/delete requests.
-    const found = await SavedBill.findOneAndUpdate({ _id: id, ownerHash, deletedAt: null }, [{ $set: { visibility: 'public', shareToken: { $ifNull: ['$shareToken', token] } } }], { new: true, maxTimeMS: 10000 }).lean();
+    const found = await SavedBill.findOneAndUpdate({ _id: id, ownerHash, deletedAt: null }, [{ $set: { visibility: 'public', shareToken: { $ifNull: ['$shareToken', token] } } }], { returnDocument: 'after', maxTimeMS: 10000, updatePipeline: true }).lean();
     return found ? bill(found) : null;
   },
   async setVisibility(ownerHash, id, visibility) {
     await ready();
     const update = visibility === 'private' ? { visibility, shareToken: null } : { visibility };
-    const found = await SavedBill.findOneAndUpdate({ _id: id, ownerHash, deletedAt: null }, { $set: update }, { new: true, maxTimeMS: 10000 }).lean();
+    const found = await SavedBill.findOneAndUpdate({ _id: id, ownerHash, deletedAt: null }, { $set: update }, { returnDocument: 'after', maxTimeMS: 10000 }).lean();
     return found ? bill(found) : null;
   },
   async deleteBill(ownerHash, id, deletedAt) {
