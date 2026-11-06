@@ -10,7 +10,7 @@ function canonical(value: unknown): string {
   if (value !== null && typeof value === 'object') return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(',')}}`;
   return JSON.stringify(value);
 }
-function ownerBill(bill: StoredBill): Bill { return { id: bill.id, createdAt: bill.createdAt, report: bill.report, text: bill.text }; }
+function ownerBill(bill: StoredBill): Bill { return { id: bill.id, createdAt: bill.createdAt, report: bill.report, text: bill.text, visibility: bill.visibility }; }
 const missing = () => new LedgerError('BILL_NOT_FOUND', '这张账单不存在或无法访问。', 404);
 
 export class LedgerService {
@@ -33,7 +33,8 @@ export class LedgerService {
     const ownerHash = await this.owner(token);
     const input = validateSave(raw);
     const contentHash = hashToken(canonical({ report: input.report, text: input.text }));
-    const result = await this.storage.insertBill({ ...input, id: randomBytes(12).toString('hex'), ownerHash, contentHash, createdAt: this.now().toISOString(), shareToken: null });
+    const result = await this.storage.insertBill({ ...input, id: randomBytes(12).toString('hex'), ownerHash, contentHash, createdAt: this.now().toISOString(), shareToken: null, visibility: 'private', deletedAt: null });
+    if (result.bill.deletedAt !== null) throw new LedgerError('BILL_DELETED', '这张账单已删除，请重新统计后保存。', 410);
     if (result.bill.contentHash !== contentHash) throw new LedgerError('IDEMPOTENCY_CONFLICT', '这次保存标识已用于另一份账单，请重新保存。', 409);
     return { bill: ownerBill(result.bill), created: result.created };
   }
@@ -44,7 +45,7 @@ export class LedgerService {
     const found = await this.storage.listBills(ownerHash, cursor, PAGE_SIZE + 1);
     const visible = found.slice(0, PAGE_SIZE);
     return {
-      bills: visible.map(bill => ({ id: bill.id, createdAt: bill.createdAt, period: bill.report.period, totals: bill.report.totals, reviewCount: bill.report.warnings.filter(warning => warning.severity === 'review').length })),
+      bills: visible.map(bill => ({ id: bill.id, createdAt: bill.createdAt, visibility: bill.visibility, period: bill.report.period, totals: bill.report.totals, reviewCount: bill.report.warnings.filter(warning => warning.severity === 'review').length })),
       nextCursor: found.length > PAGE_SIZE ? encodeCursor(visible[visible.length - 1]) : null,
     };
   }
@@ -61,6 +62,24 @@ export class LedgerService {
     const bill = await this.storage.assignShareToken(ownerHash, id, randomBytes(32).toString('hex'));
     if (!bill || !bill.shareToken) throw missing();
     return { token: bill.shareToken };
+  }
+
+  async setVisibility(token: string | null, id: string, raw: unknown) {
+    const ownerHash = await this.owner(token); validateId(id);
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
+        Object.keys(raw).length !== 1 || !('visibility' in raw) ||
+        (raw.visibility !== 'private' && raw.visibility !== 'public')) {
+      throw new LedgerError('INVALID_VISIBILITY', '请选择私有或公开。');
+    }
+    const bill = await this.storage.setVisibility(ownerHash, id, raw.visibility);
+    if (!bill) throw missing();
+    return { id: bill.id, visibility: bill.visibility };
+  }
+
+  async deleteBill(token: string | null, id: string) {
+    const ownerHash = await this.owner(token); validateId(id);
+    if (!await this.storage.deleteBill(ownerHash, id, this.now().toISOString())) throw missing();
+    return { id, deleted: true as const };
   }
 
   async getSharedBill(token: string) {
