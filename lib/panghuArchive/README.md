@@ -37,9 +37,9 @@ ArchivedMessage 在 CloudMessage 上增加服务端 `archivedAt`（同样规范 
 
 ## 存储与密钥
 
-复用 `lib/mongodb.ts` 的连接，独立 `PanghuArchiveSession` 和 `PanghuArchiveRecord` 模型。记录 `_id` 是 `[ownerHash,id]` 哈希，另建 ownerHash+id 唯一索引以及 ownerHash+archivedAt+id 分页索引。所有读写都显式带 ownerHash；不接受 body 中的所有者。
+复用 `lib/mongodb.ts` 的连接，独立 `PanghuArchiveSession` 和 `PanghuArchiveRecord` 模型。记录 `_id` 是 `[ownerHash,id]` 哈希，另建 ownerHash+id 唯一索引以及 ownerHash+archivedAt+id 分页索引。普通客户端读写都显式带 ownerHash；不接受 body 中的所有者。管理员跨账号查询只通过独立管理员 cookie 授权。
 
-必须配置 `PANGHU_ARCHIVE_ENCRYPTION_KEY`：**精确 32 字节的规范 base64 字符串**。缺失、格式错误或旧数据无法解密均返回 503，不回退到明文。完整 CloudMessage 用 AES-256-GCM、随机 12 字节 IV、16 字节认证标签加密；AAD 绑定版本、ownerHash、id、archivedAt、contentHash。MongoDB 明文元数据为 ownerHash/id/contentHash/archivedAt、必要加密参数，以及用于管理员精确过滤的 profileHash、peerIdHash、occurredAt。两个身份索引是 SHA-256，原始身份与正文只存密文；解密时再次核对索引元数据。Session 只存 tokenHash 和创建时间。密钥存服务器私有环境配置，并与数据库分别备份；丢失后无法恢复正文，本版本不实现轮换。写入要求 majority+journal 确认且等待结果；重复写入仅在 majority 读取确认原记录后才返回已接受，不把超时后只在本地可见的写入当作成功。
+必须配置 `PANGHU_ARCHIVE_ENCRYPTION_KEY`：**精确 32 字节的规范 base64 字符串**。缺失、格式错误或旧数据无法解密均返回 503，不回退到明文。完整 CloudMessage 用 AES-256-GCM、随机 12 字节 IV、16 字节认证标签加密；AAD 绑定版本、ownerHash、id、archivedAt、contentHash。MongoDB 明文元数据为 ownerHash/id/contentHash/archivedAt、必要加密参数，以及用于管理员精确过滤的 profileHash、peerIdHash、occurredAt、direction。两个身份索引是 SHA-256，原始身份与正文只存密文；解密时再次核对索引元数据。Session 只存 tokenHash 和创建时间。密钥存服务器私有环境配置，并与数据库分别备份；丢失后无法恢复正文，本版本不实现轮换。写入要求 majority+journal 确认且等待结果；重复写入仅在 majority 读取确认原记录后才返回已接受，不把超时后只在本地可见的写入当作成功。
 
 独立限流使用最多 10000 项进程内计数器；重启会重置，多实例不共享计数。默认不信任客户端 IP 头；仅在可信反向代理覆盖 `X-Real-IP` 时可设 `PANGHU_ARCHIVE_TRUST_PROXY=true`。每 IP 每分钟 240 次；创建令牌每 IP 每 UTC 日 10 次、全局 200 次；写入每 owner 每分钟 60 批、每日 2000 批；查询每 owner 每分钟 120 次；管理员登录每 IP 每 15 分钟 5 次、全局 60 次。不得通过限流错误判断某条消息是否已经保存。
 
@@ -57,3 +57,23 @@ Cookie 名 `panghu_archive_admin`，固定 `HttpOnly; Secure; SameSite=Strict; P
 ## 验证
 
 `node --test lib/panghuArchive/*.test.mjs` 使用模拟存储和固定假密钥，不连接真实数据库、不发送钉钉消息。覆盖 owner 隔离、严格结构、大小/分页、加密与 AAD、防覆盖、并发幂等及批次部分成功。生产部署还需验证独立测试令牌的写入/重读，以及无令牌与不同令牌不可读取；样例只使用明确虚构消息。
+
+## 管理员账号收件箱
+
+- `GET /api/panghu-archive/admin/accounts?cursor=<opaque>`：管理员 cookie 授权，只有可选单个 cursor 参数。200 `{ "ok": true, "accounts": [{"profile":"<精确账号>","displayName":null,"incomingCount":0,"lastReceivedAt":null}], "nextCursor":null }`。固定 50 条，按 profileHash 升序分页。跨安装实例的相同 profile 归为同一账号；只发过消息的账号也列出，收到数为 0、最近收到时间为 null。无记录时 accounts 为 []。incomingCount 按归档 incoming 文档计数，与消息列表一致，不额外猜测跨安装副本去重。lastReceivedAt 是收到消息 occurredAt 的最大值。统计信任服务端验证写入与受控回填产生的索引元数据；消息正文仍在实际读取时逐条校验 AES-GCM 及身份/方向绑定。分页不返回内部 hash。
+- `PUT /api/panghu-archive/admin/accounts`：管理员 cookie 加严格同源 Origin；请求严格 `{ "profile":"<精确账号>", "displayName":"管理员备注" }`。备注为 1–80 UTF-16 单元、无首尾空白/ASCII 控制字符；传 null 清除。200 `{ "ok":true, "account":{"profile":"<精确账号>","displayName":"管理员备注"} }`。不存在归档的账号返回 404 `ACCOUNT_NOT_FOUND`。只修改独立备注，消息内容、身份、时间和安装令牌完全不变；并发保存以后完成的写入为准。
+- `GET /api/panghu-archive/admin/records` 新增 `direction=incoming|outgoing`。省略保留原先全部方向，空串/all/其他值返回 400。分页 cursor 包含 direction 过滤绑定；修改方向必须回到第一页。收件箱页面固定精确 profile 和 incoming。普通客户端 GET/POST/session 接口不变。
+
+当前客户端不报告账号本人的名称，displayName 默认 null，只显示管理员明确填写的备注。不得从 peerName、聊天正文、其他联系人推断账号名称。独立 `PanghuArchiveAccountNote` 模型仅明文保存 profileHash/updatedAt；原 profile 和备注 AES-256-GCM 加密，AAD 使用独立版本绑定 profileHash 与 updatedAt，不与消息 payload 混用。
+
+### 方向索引迁移
+
+新消息明确把经过验证的 `record.direction` 写入索引元数据，解密时必须与正文 direction 相同。旧消息的 payload/id/archivedAt 不改。账号列表、带方向的管理员消息查询遇到任何缺 direction 元数据的旧文档，返回 503 `ARCHIVE_UNAVAILABLE`，提示“消息方向索引正在更新”，不会返回不完整列表；原无方向查询与普通客户端读取保持兼容。
+
+部署时先切换并重启新构建，保证此后新写入包含 direction，再运行以下受控维护命令。只读取密文并校验 AES-GCM，唯一来源是解密后的 direction；不由 source/status/相邻字段推断。每批最多 500，CAS 只更新仍缺失的 direction，可重复执行；超时或中断后从剩余旧记录恢复。运行器只输出扫描/更新数量及完成状态，不输出消息、身份或密钥。只有空批明确返回 complete:true 才算结束；达到 max-batches 返回退出码 2，继续执行即可。运行期间接口仍拒绝不完整结果。
+
+```sh
+PANGHU_ARCHIVE_ALLOW_DIRECTION_BACKFILL=yes node lib/panghuArchive/backfillDirections.mjs --batch-size=100 --max-batches=1000
+```
+
+该命令加载服务器现有私有 production 环境和原 connectDB，不需要把密钥放命令行。只能在已授权部署维护时运行；本地测试使用模拟存储，不执行真实回填。

@@ -14,7 +14,10 @@ export type CloudMessage = {
 export type ArchivedMessage = CloudMessage & { archivedAt: string };
 export type ArchiveCursor = { archivedAt: string; id: string };
 export type AdminCursor = { archivedAt: string; key: string; filterHash: string };
-export type AdminFilters = { profile: string | null; peerId: string | null; from: string | null; to: string | null };
+export type AdminFilters = { profile: string | null; peerId: string | null; from: string | null; to: string | null; direction: CloudMessage['direction'] | null };
+export type AccountName = { profile: string; displayName: string | null };
+export type ArchiveAccount = AccountName & { incomingCount: number; lastReceivedAt: string | null };
+export type AccountRow = ArchiveAccount & { profileHash: string };
 export type StoredMessage = { record: CloudMessage; ownerHash: string; contentHash: string; archivedAt: string };
 export type EncryptedPayload = { version: 1; iv: string; tag: string; data: string };
 export interface ArchiveStorage {
@@ -25,5 +28,7 @@ export interface ArchiveStorage {
   createAdminSession(tokenHash: string, expiresAt: string): Promise<void>;
   hasAdminSession(tokenHash: string, now: string): Promise<boolean>;
   deleteAdminSession(tokenHash: string): Promise<void>;
+  listAccounts(afterProfileHash: string | null, limit: number): Promise<AccountRow[]>;
+  setAccountName(value: AccountName, updatedAt: string): Promise<AccountName>;
   listAdminRecords(filters: AdminFilters, cursor: AdminCursor | null, limit: number): Promise<StoredMessage[]>;
 }

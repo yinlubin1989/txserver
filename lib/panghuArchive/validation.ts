@@ -1,5 +1,5 @@
 import { ArchiveError, invalid } from './errors';
-import type { AdminCursor, AdminFilters, ArchiveCursor, CloudMessage } from './types';
+import type { AccountName, AdminCursor, AdminFilters, ArchiveCursor, CloudMessage } from './types';
 
 export const TOKEN_PATTERN = /^[a-f0-9]{64}$/;
 export const MAX_BATCH_SIZE = 50;
@@ -62,8 +62,11 @@ export function validateQuery(parameters: URLSearchParams, allowed: string[]): v
   }
 }
 export function validateAdminFilters(parameters: URLSearchParams): AdminFilters {
-  validateQuery(parameters, ['cursor', 'profile', 'peerId', 'from', 'to']);
-  const filters: AdminFilters = { profile: parameters.get('profile'), peerId: parameters.get('peerId'), from: parameters.get('from'), to: parameters.get('to') };
+  validateQuery(parameters, ['cursor', 'profile', 'peerId', 'from', 'to', 'direction']);
+  const filters: AdminFilters = { profile: parameters.get('profile'), peerId: parameters.get('peerId'), from: parameters.get('from'), to: parameters.get('to'), direction: null };
+  const direction = parameters.get('direction');
+  if (direction !== null && direction !== 'incoming' && direction !== 'outgoing') throw new ArchiveError('INVALID_QUERY', '归档方向筛选不正确。');
+  filters.direction = direction;
   try {
     if (filters.profile !== null) identifier(filters.profile);
     if (filters.peerId !== null) identifier(filters.peerId, 256);
@@ -88,4 +91,21 @@ export function validatePassword(raw: unknown): string {
   exact(raw, ['password']);
   if (typeof raw.password !== 'string' || !raw.password.length || Buffer.byteLength(raw.password, 'utf8') > 72) throw new ArchiveError('UNAUTHORIZED', '管理员密码不正确。', 401);
   return raw.password;
+}
+
+export function validateAccountName(raw: unknown): AccountName {
+  exact(raw, ['profile', 'displayName']); identifier(raw.profile);
+  if (raw.displayName !== null) identifier(raw.displayName, 80);
+  return { profile: raw.profile, displayName: raw.displayName as string | null };
+}
+export function encodeAccountCursor(profileHash: string): string { return Buffer.from(JSON.stringify({ profileHash })).toString('base64url'); }
+export function decodeAccountCursor(value: string | null): string | null {
+  if (value === null) return null;
+  try {
+    if (!/^[A-Za-z0-9_-]{1,160}$/.test(value)) throw new Error();
+    const decoded = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+    exact(decoded, ['profileHash']);
+    if (typeof decoded.profileHash !== 'string' || !TOKEN_PATTERN.test(decoded.profileHash) || encodeAccountCursor(decoded.profileHash) !== value) throw new Error();
+    return decoded.profileHash;
+  } catch { throw new ArchiveError('INVALID_CURSOR', '账号分页参数不正确，请重新加载。'); }
 }

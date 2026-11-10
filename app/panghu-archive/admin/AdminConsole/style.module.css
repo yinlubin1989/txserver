@@ -1,25 +1,25 @@
 .page,
 .loginPage {
   min-height: 100dvh;
-  background: #f6f7f9;
-  color: #202124;
+  background: #f5f6f8;
+  color: #25272b;
   font-size: 16px;
 }
 .container {
-  max-width: 1180px;
+  max-width: 1380px;
   margin: 0 auto;
-  padding: 32px 24px;
+  padding: 30px 28px;
 }
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  margin-bottom: 28px;
+  margin-bottom: 26px;
 }
 .brand {
-  margin: 0 0 8px;
-  color: #6b7280;
+  margin: 0 0 7px;
+  color: #707782;
   font-size: 14px;
 }
 .header h1,
@@ -30,16 +30,18 @@
   font-weight: 600;
 }
 .primary,
-.secondary {
+.secondary,
+.textButton,
+.moreAccounts {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
-  padding: 8px 16px;
-  border: 1px solid #d8dce2;
+  min-height: 40px;
+  padding: 7px 14px;
+  border: 1px solid #dadde3;
   border-radius: 7px;
   background: #fff;
-  color: #202124;
+  color: #25272b;
   font: inherit;
   cursor: pointer;
   white-space: nowrap;
@@ -49,13 +51,21 @@
   border-color: #2463d4;
   background: #2463d4;
 }
-.primary:disabled,
-.secondary:disabled {
+.textButton {
+  color: #2463d4;
+  padding: 4px 3px;
+  border-color: transparent;
+  background: transparent;
+  font-size: 14px;
+}
+.page button:disabled,
+.loginPage button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 .page button:focus-visible,
-.loginPage button:focus-visible {
+.loginPage button:focus-visible,
+.page summary:focus-visible {
   outline: 2px solid #2463d4;
   outline-offset: 3px;
 }
@@ -65,10 +75,10 @@
   min-width: 0;
   min-height: 42px;
   padding: 8px 10px;
-  border: 1px solid #d8dce2;
+  border: 1px solid #dadde3;
   border-radius: 7px;
   background: #fff;
-  color: #202124;
+  color: #25272b;
   font: inherit;
 }
 .page input:focus,
@@ -83,101 +93,116 @@
   flex-direction: column;
   gap: 8px;
   font-size: 14px;
-  color: #555d69;
+  color: #5a626e;
 }
-.filters {
+.workspace {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr auto;
-  align-items: end;
-  gap: 14px;
-  padding: 20px;
-  border: 1px solid #e1e4e9;
-  border-radius: 10px;
-  background: #fff;
-  margin-bottom: 20px;
+  grid-template-columns: 280px minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
 }
-.records {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.record {
-  padding: 22px;
-  border: 1px solid #e1e4e9;
-  border-radius: 10px;
-  background: #fff;
-}
-.recordHeading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-}
-.recordHeading h2 {
-  margin: 0;
+.accounts {
   min-width: 0;
-  font-size: 17px;
+  background: #fff;
+  border: 1px solid #e0e3e8;
+  border-radius: 11px;
+  overflow: hidden;
+}
+.accountsHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e8eaee;
+}
+.accountsHeading h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.accountList {
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  max-height: 64vh;
+  overflow: auto;
+}
+.account {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  padding: 14px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #25272b;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.account:hover {
+  background: #f3f5f8;
+}
+.account.accountSelected {
+  background: #eaf1ff;
+  color: #1b55b8;
+}
+.account strong {
+  font-size: 16px;
+  line-height: 1.5;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
-.recordHeading time {
-  color: #6b7280;
+.accountProfile {
   font-size: 14px;
-  white-space: nowrap;
-}
-.identity {
-  margin: 8px 0 12px;
-  color: #6b7280;
-  font-size: 14px;
+  color: #687484;
   overflow-wrap: anywhere;
 }
-.tags {
+.accountMeta {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
+  color: #717985;
   font-size: 14px;
-  color: #596474;
 }
-.tags span {
-  padding: 3px 7px;
-  border-radius: 4px;
-  background: #f1f3f6;
+.accountSelected .accountMeta,
+.accountSelected .accountProfile {
+  color: #516e9b;
 }
-.tags .unknown {
-  color: #926318;
-  background: #fff5df;
-}
-.message {
-  margin: 18px 0;
-  line-height: 1.75;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.archiveMeta {
+.listNote {
   margin: 0;
-  color: #6b7280;
+  padding: 20px 18px;
+  color: #707782;
   font-size: 14px;
-  overflow-wrap: anywhere;
 }
-.pagination {
+.moreAccounts {
   display: flex;
-  justify-content: center;
+  margin: 6px auto 16px;
+  min-height: 36px;
+  font-size: 14px;
+}
+.selectionEmpty {
+  min-height: 360px;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 20px;
-  margin-top: 24px;
-}
-.pagination > span {
-  color: #6b7280;
-  font-size: 14px;
-}
-.empty {
-  margin: 0;
-  padding: 64px 20px;
-  text-align: center;
-  color: #6b7280;
+  justify-content: center;
+  padding: 30px;
   background: #fff;
-  border: 1px solid #e1e4e9;
-  border-radius: 10px;
+  border: 1px solid #e0e3e8;
+  border-radius: 11px;
+}
+.selectionEmpty h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  font-weight: 500;
+}
+.selectionEmpty p {
+  margin: 0;
+  color: #707782;
 }
 .error,
 .errorBar {
@@ -189,15 +214,12 @@
   margin: 0;
 }
 .errorBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
   padding: 12px 16px;
   background: #fff0ee;
   border: 1px solid #f0cdc8;
   border-radius: 8px;
   margin-bottom: 18px;
+  overflow-wrap: anywhere;
 }
 .loginPage {
   display: flex;
@@ -209,7 +231,7 @@
   width: min(100%, 400px);
   padding: 32px;
   background: #fff;
-  border: 1px solid #e1e4e9;
+  border: 1px solid #e0e3e8;
   border-radius: 12px;
 }
 .loginPanel h1 {
@@ -225,37 +247,25 @@
   width: 100%;
 }
 .muted {
-  color: #6b7280;
+  color: #707782;
   font-size: 14px;
 }
-@media (max-width: 1000px) {
-  .filters {
-    grid-template-columns: 1fr 1fr;
-  }
-  .filters > button {
-    justify-self: start;
-  }
-}
-@media (max-width: 600px) {
+@media (max-width: 760px) {
   .container {
-    padding: 24px 16px;
+    padding: 22px 16px;
   }
-  .filters {
-    grid-template-columns: 1fr;
-    padding: 16px;
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
   }
-  .record {
-    padding: 16px;
-  }
-  .recordHeading {
-    flex-direction: column;
-    gap: 6px;
+  .accountList {
+    max-height: 230px;
   }
   .header h1 {
     font-size: 24px;
   }
-  .pagination {
-    gap: 12px;
+  .selectionEmpty {
+    min-height: 200px;
   }
   .loginPanel {
     padding: 24px;

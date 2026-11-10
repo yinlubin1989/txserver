@@ -15,15 +15,11 @@ export interface ArchiveRecord {
 }
 
 export interface ArchiveFilters {
-  profile: string;
-  peerId: string;
   from: string;
   to: string;
 }
 
 export const EMPTY_FILTERS: ArchiveFilters = {
-  profile: "",
-  peerId: "",
   from: "",
   to: "",
 };
@@ -120,13 +116,13 @@ function isRecord(value: unknown): value is ArchiveRecord {
 }
 
 export async function readRecords(
+  profile: string,
   filters: ArchiveFilters,
   cursor: string | null,
   signal: AbortSignal,
 ): Promise<{ records: ArchiveRecord[]; nextCursor: string | null }> {
-  const params = new URLSearchParams();
-  if (filters.profile.trim()) params.set("profile", filters.profile.trim());
-  if (filters.peerId.trim()) params.set("peerId", filters.peerId.trim());
+  if (!profile) throw new Error("请先选择用户。");
+  const params = new URLSearchParams({ profile, direction: "incoming" });
   for (const key of ["from", "to"] as const) {
     if (!filters[key]) continue;
     const date = new Date(filters[key]);
@@ -146,7 +142,14 @@ export async function readRecords(
   });
   if (
     !Array.isArray(data.records) ||
-    !data.records.every(isRecord) ||
+    !data.records.every(
+      (record) =>
+        isRecord(record) &&
+        record.profile === profile &&
+        record.direction === "incoming" &&
+        record.source === "incoming" &&
+        record.status === "received",
+    ) ||
     !(
       data.nextCursor === null ||
       (typeof data.nextCursor === "string" && data.nextCursor.length > 0)
@@ -155,4 +158,75 @@ export async function readRecords(
     throw new Error("归档记录响应格式异常，请重试。");
   }
   return { records: data.records, nextCursor: data.nextCursor };
+}
+
+export interface ArchiveAccount {
+  profile: string;
+  displayName: string | null;
+  incomingCount: number;
+  lastReceivedAt: string | null;
+}
+const isDisplayName = (value: unknown): value is string | null =>
+  value === null ||
+  (typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= 80 &&
+    value === value.trim() &&
+    !/[\u0000-\u001f\u007f]/.test(value));
+const isCursor = (value: unknown): value is string | null =>
+  value === null || (typeof value === "string" && value.length > 0);
+function isAccount(value: unknown): value is ArchiveAccount {
+  return (
+    isObject(value) &&
+    typeof value.profile === "string" &&
+    value.profile.length > 0 &&
+    isDisplayName(value.displayName) &&
+    typeof value.incomingCount === "number" &&
+    Number.isSafeInteger(value.incomingCount) &&
+    value.incomingCount >= 0 &&
+    (value.lastReceivedAt === null ||
+      (typeof value.lastReceivedAt === "string" &&
+        Number.isFinite(Date.parse(value.lastReceivedAt)) &&
+        new Date(value.lastReceivedAt).toISOString() === value.lastReceivedAt))
+  );
+}
+export async function readAccounts(
+  cursor: string | null,
+  signal: AbortSignal,
+): Promise<{ accounts: ArchiveAccount[]; nextCursor: string | null }> {
+  const data = await request(
+    `/accounts${cursor === null ? "" : `?${new URLSearchParams({ cursor })}`}`,
+    { signal },
+  );
+  if (
+    !Array.isArray(data.accounts) ||
+    data.accounts.length > 50 ||
+    !data.accounts.every(isAccount) ||
+    !isCursor(data.nextCursor) ||
+    new Set(data.accounts.map((account) => account.profile)).size !==
+      data.accounts.length
+  )
+    throw new Error("用户列表响应格式异常，请重试。");
+  return { accounts: data.accounts, nextCursor: data.nextCursor };
+}
+export async function writeAccountName(
+  profile: string,
+  displayName: string | null,
+  signal: AbortSignal,
+): Promise<{ profile: string; displayName: string | null }> {
+  if (!isDisplayName(displayName))
+    throw new Error("备注最多 80 字，不能包含控制字符。");
+  const data = await request("/accounts", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ profile, displayName }),
+    signal,
+  });
+  if (
+    !isObject(data.account) ||
+    data.account.profile !== profile ||
+    !isDisplayName(data.account.displayName)
+  )
+    throw new Error("备注响应格式异常，请刷新用户列表。");
+  return { profile, displayName: data.account.displayName };
 }

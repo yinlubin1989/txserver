@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { ArchiveError, unavailable } from './errors';
 import { canonical, hashToken } from './crypto';
-import { decodeAdminCursor, encodeAdminCursor, TOKEN_PATTERN, validateAdminFilters, validatePassword } from './validation';
+import { decodeAccountCursor, decodeAdminCursor, encodeAccountCursor, encodeAdminCursor, TOKEN_PATTERN, validateAccountName, validateAdminFilters, validatePassword, validateQuery } from './validation';
 import type { ArchiveStorage } from './types';
 
 export const ADMIN_COOKIE = 'panghu_archive_admin';
@@ -23,6 +23,17 @@ export class ArchiveAdminService {
   }
   async logout(token: string | null) {
     if (token && TOKEN_PATTERN.test(token)) await this.storage.deleteAdminSession(hashToken(token));
+  }
+  async listAccounts(token: string | null, parameters: URLSearchParams) {
+    await this.authenticate(token);
+    validateQuery(parameters, ['cursor']);
+    const rows = await this.storage.listAccounts(decodeAccountCursor(parameters.get('cursor')), 51);
+    const visible = rows.slice(0, 50);
+    return { accounts: visible.map(({ profile, displayName, incomingCount, lastReceivedAt }) => ({ profile, displayName, incomingCount, lastReceivedAt })), nextCursor: rows.length > 50 ? encodeAccountCursor(visible[visible.length - 1].profileHash) : null };
+  }
+  async setAccountName(token: string | null, raw: unknown) {
+    await this.authenticate(token);
+    return this.storage.setAccountName(validateAccountName(raw), this.now().toISOString());
   }
   async listRecords(token: string | null, parameters: URLSearchParams) {
     await this.authenticate(token);

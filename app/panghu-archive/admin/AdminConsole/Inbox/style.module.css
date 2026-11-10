@@ -1,0 +1,179 @@
+.inbox {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #e0e3e8;
+  border-radius: 11px;
+}
+.heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 24px 26px 16px;
+}
+.heading > div {
+  min-width: 0;
+}
+.heading > div > p {
+  margin: 0 0 5px;
+  color: #707782;
+  font-size: 14px;
+}
+.title {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.title h2 {
+  min-width: 0;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.nameForm {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  margin: 0 26px 20px;
+  padding: 16px;
+  background: #f6f8fb;
+  border-radius: 7px;
+}
+.nameForm label {
+  flex: 1;
+}
+.accountDetails {
+  margin: 0 26px 12px;
+  font-size: 14px;
+  color: #707782;
+}
+.accountDetails summary,
+.filtersDetails > summary {
+  cursor: pointer;
+  width: fit-content;
+}
+.accountDetails p {
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+.filtersDetails {
+  padding: 0 26px 18px;
+  border-bottom: 1px solid #e8eaee;
+}
+.filtersDetails > summary {
+  color: #596575;
+  font-size: 14px;
+}
+.filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin-top: 16px;
+}
+.records {
+  min-height: 240px;
+}
+.record {
+  padding: 22px 26px;
+  border-bottom: 1px solid #eceef1;
+}
+.recordHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+}
+.recordHeading h3 {
+  min-width: 0;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.recordHeading time {
+  color: #737b86;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.message {
+  margin: 10px 0 0;
+  font-size: 17px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.empty {
+  margin: 0;
+  padding: 80px 24px;
+  text-align: center;
+  color: #707782;
+}
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+}
+.pagination > span {
+  color: #707782;
+  font-size: 14px;
+}
+@media (max-width: 1080px) {
+  .filters {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .filters > button {
+    justify-self: start;
+  }
+}
+@media (max-width: 600px) {
+  .heading {
+    padding: 20px 18px 14px;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .heading > button {
+    font-size: 14px;
+    padding: 6px 10px;
+  }
+  .title {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+  .title h2 {
+    font-size: 20px;
+  }
+  .nameForm {
+    margin: 0 18px 16px;
+    flex-wrap: wrap;
+  }
+  .nameForm label {
+    flex-basis: 100%;
+  }
+  .accountDetails {
+    margin-left: 18px;
+    margin-right: 18px;
+  }
+  .filtersDetails {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .record {
+    padding: 20px 18px;
+  }
+  .recordHeading {
+    flex-direction: column;
+    gap: 5px;
+  }
+  .pagination {
+    gap: 12px;
+    padding: 18px;
+  }
+}

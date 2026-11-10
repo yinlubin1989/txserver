@@ -1,6 +1,6 @@
 import { ArchiveError } from './errors';
 
-export type RequestKind = 'session' | 'read' | 'write' | 'admin-login' | 'admin-read' | 'admin-logout';
+export type RequestKind = 'session' | 'read' | 'write' | 'admin-login' | 'admin-read' | 'admin-logout' | 'admin-write';
 type Counter = { count: number; expiresAt: number };
 export function createLimiter() {
   const counters = new Map<string, Counter>();

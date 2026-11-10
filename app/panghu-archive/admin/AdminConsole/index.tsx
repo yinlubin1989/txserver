@@ -1,28 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import type { ArchiveRecord } from "./api";
 import { useArchiveAdmin } from "./useArchiveAdmin";
+import { Inbox } from "./Inbox";
 import styles from "./style.module.css";
-
-const SOURCE_LABELS: Record<ArchiveRecord["source"], string> = {
-  incoming: "收到消息",
-  auto_reply: "自动回复",
-  manual_reply: "手动回复",
-  outbound: "主动发送",
-};
-const STATUS_LABELS: Record<ArchiveRecord["status"], string> = {
-  received: "已接收",
-  sent: "已发送",
-  unknown: "结果未知",
-};
-const formatTime = (value: string) =>
-  new Date(value).toLocaleString("zh-CN", { hour12: false });
 
 export function AdminConsole() {
   const admin = useArchiveAdmin();
   const [password, setPassword] = useState("");
-
   if (admin.session !== "authenticated") {
     return (
       <main className={styles.loginPage}>
@@ -80,7 +65,6 @@ export function AdminConsole() {
       </main>
     );
   }
-
   return (
     <main className={styles.page}>
       <div className={styles.container}>
@@ -97,164 +81,91 @@ export function AdminConsole() {
             {admin.busy === "logout" ? "退出中…" : "退出登录"}
           </button>
         </header>
-        <form
-          className={styles.filters}
-          onSubmit={(event) => {
-            event.preventDefault();
-            admin.applyFilters();
-          }}
-        >
-          <label>
-            账号
-            <input
-              placeholder="corpId:userId"
-              maxLength={512}
-              value={admin.filters.profile}
-              disabled={admin.busy === "logout"}
-              onChange={(event) =>
-                admin.changeFilters({
-                  ...admin.filters,
-                  profile: event.target.value,
-                })
-              }
-            />
-          </label>
-          <label>
-            联系人 ID
-            <input
-              placeholder="openDingtalkId"
-              maxLength={256}
-              value={admin.filters.peerId}
-              disabled={admin.busy === "logout"}
-              onChange={(event) =>
-                admin.changeFilters({
-                  ...admin.filters,
-                  peerId: event.target.value,
-                })
-              }
-            />
-          </label>
-          <label>
-            开始时间（本地）
-            <input
-              type="datetime-local"
-              step="1"
-              value={admin.filters.from}
-              disabled={admin.busy === "logout"}
-              onChange={(event) =>
-                admin.changeFilters({
-                  ...admin.filters,
-                  from: event.target.value,
-                })
-              }
-            />
-          </label>
-          <label>
-            结束时间（本地）
-            <input
-              type="datetime-local"
-              step="1"
-              value={admin.filters.to}
-              disabled={admin.busy === "logout"}
-              onChange={(event) =>
-                admin.changeFilters({
-                  ...admin.filters,
-                  to: event.target.value,
-                })
-              }
-            />
-          </label>
-          <button className={styles.primary} disabled={admin.busy !== null}>
-            筛选
-          </button>
-        </form>
         {admin.error && (
           <div className={styles.errorBar} role="alert">
-            <span>{admin.error}</span>
-            <button
-              className={styles.secondary}
-              disabled={admin.busy !== null}
-              onClick={admin.retryRecords}
-            >
-              重试
-            </button>
+            {admin.error}
           </div>
         )}
-        <section
-          className={styles.records}
-          aria-label="归档消息"
-          aria-busy={admin.busy === "records"}
-        >
-          {admin.busy === "records" ? (
-            <p className={styles.empty} role="status">
-              正在加载…
-            </p>
-          ) : admin.records.length === 0 ? (
-            <p className={styles.empty}>
-              {admin.loaded
-                ? "暂无符合条件的消息"
-                : admin.error
-                  ? "记录暂不可用"
-                  : "点击筛选查看记录"}
-            </p>
-          ) : (
-            admin.records.map((record) => (
-              <article
-                className={styles.record}
-                key={`${record.ownerId}:${record.id}`}
+        <div className={styles.workspace}>
+          <aside
+            className={styles.accounts}
+            aria-label="用户列表"
+            aria-busy={admin.loadingAccounts}
+          >
+            <div className={styles.accountsHeading}>
+              <h2>用户</h2>
+              <button
+                className={styles.textButton}
+                disabled={admin.busy !== null || admin.loadingAccounts}
+                onClick={admin.refreshAccounts}
               >
-                <div className={styles.recordHeading}>
-                  <h2>{record.peerName || record.peerId}</h2>
-                  <time dateTime={record.occurredAt}>
-                    {formatTime(record.occurredAt)}
-                  </time>
-                </div>
-                <p className={styles.identity}>
-                  账号 {record.profile} · 联系人 {record.peerId}
-                </p>
-                <div className={styles.tags}>
-                  <span>
-                    {record.direction === "incoming" ? "接收" : "发出"}
-                  </span>
-                  <span>{SOURCE_LABELS[record.source]}</span>
-                  <span
-                    className={
-                      record.status === "unknown" ? styles.unknown : undefined
-                    }
+                刷新用户
+              </button>
+            </div>
+            <ul className={styles.accountList}>
+              {admin.accounts.map((account) => (
+                <li key={account.profile}>
+                  <button
+                    className={`${styles.account} ${admin.selected?.profile === account.profile ? styles.accountSelected : ""}`}
+                    aria-label={`选择用户 ${account.displayName ?? account.profile}`}
+                    aria-pressed={admin.selected?.profile === account.profile}
+                    disabled={admin.busy === "logout"}
+                    onClick={() => admin.selectAccount(account.profile)}
                   >
-                    {STATUS_LABELS[record.status]}
-                  </span>
-                </div>
-                <p className={styles.message}>
-                  {record.text || "（无文本内容）"}
-                </p>
-                <p className={styles.archiveMeta}>
-                  归档 {record.ownerId} · {formatTime(record.archivedAt)}
-                </p>
-              </article>
-            ))
+                    <strong>{account.displayName ?? account.profile}</strong>
+                    {account.displayName && (
+                      <span className={styles.accountProfile}>
+                        {account.profile}
+                      </span>
+                    )}
+                    <span className={styles.accountMeta}>
+                      <span>{account.incomingCount} 条消息</span>
+                      {account.lastReceivedAt && (
+                        <time dateTime={account.lastReceivedAt}>
+                          {new Date(account.lastReceivedAt).toLocaleDateString(
+                            "zh-CN",
+                            { month: "numeric", day: "numeric" },
+                          )}
+                        </time>
+                      )}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {admin.loadingAccounts && (
+              <p className={styles.listNote} role="status">
+                正在加载用户…
+              </p>
+            )}
+            {!admin.loadingAccounts && admin.accounts.length === 0 && (
+              <p className={styles.listNote}>
+                {admin.accountsLoaded ? "暂无用户" : "用户列表暂不可用"}
+              </p>
+            )}
+            {admin.accountsCursor !== null && (
+              <button
+                className={styles.moreAccounts}
+                disabled={admin.busy === "logout" || admin.loadingAccounts}
+                onClick={admin.moreAccounts}
+              >
+                更多用户
+              </button>
+            )}
+          </aside>
+          {admin.selected ? (
+            <Inbox
+              key={admin.selected.profile}
+              account={admin.selected}
+              admin={admin}
+            />
+          ) : (
+            <section className={styles.selectionEmpty} aria-label="收件箱">
+              <h2>选择一个用户</h2>
+              <p>查看收到的消息</p>
+            </section>
           )}
-        </section>
-        <nav className={styles.pagination} aria-label="消息分页">
-          <button
-            className={styles.secondary}
-            disabled={admin.busy !== null || admin.page === 1}
-            onClick={admin.previous}
-          >
-            上一页
-          </button>
-          <span>
-            第 {admin.page} 页
-            {admin.loaded ? ` · ${admin.records.length} 条` : ""}
-          </span>
-          <button
-            className={styles.secondary}
-            disabled={admin.busy !== null || admin.nextCursor === null}
-            onClick={admin.next}
-          >
-            下一页
-          </button>
-        </nav>
+        </div>
       </div>
     </main>
   );
