@@ -81,6 +81,6 @@ npx tsc --noEmit --incremental false
 
 参考微信官方 [wx.login](https://developers.weixin.qq.com/miniprogram/dev/api/open-api/login/wx.login.html) 和 [code2Session](https://developers.weixin.qq.com/miniprogram/dev/server/API/user-login/api_code2session.html)。微信响应成功可能省略 errcode；显式非零 errcode 必须失败。需有效 openid 与 session_key 才接受，session_key 不保存、不下发。调用最多 10 秒，不跟随重定向；错误日志不含上游 URL、code 或密钥。
 
-先配置并部署服务端（包括会话索引），验证微信登录可用，再发布小程序。开发者工具账本依然走本地 8000 服务，本地服务也需独立配置同一 AppID/AppSecret；不会把开发者工具的匿名账本偷偷迁往生产环境。
+先配置并部署服务端（包括会话索引），验证微信登录可用，再发布小程序。开发者工具账本依然走本地 8000 服务，本地服务也需独立配置同一 AppID/AppSecret；本地缓存凭证按 API 地址分开存储；数据库由现有 connectDB 配置决定，若本地与生产使用同一数据库，已关联的同一微信账本也会共用。
 
 上线验收：旧凭证存在时打开账本完成绑定 → 清缓存 → 重新打开可看同一批账单；另一微信为空；公开分享仍可读，私有/删除仍不可读；微信登录网络失败显示错误；旧凭证已经丢失的账单不自动认领。
