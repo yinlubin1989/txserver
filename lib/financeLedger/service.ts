@@ -12,6 +12,14 @@ function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 function ownerBill(bill: StoredBill): Bill { return { id: bill.id, createdAt: bill.createdAt, report: bill.report, text: bill.text, visibility: bill.visibility }; }
+function summary(bill: StoredBill) {
+  return { id: bill.id, createdAt: bill.createdAt, visibility: bill.visibility, period: bill.report.period,
+    totals: bill.report.totals, reviewCount: bill.report.warnings.filter(warning => warning.severity === 'review').length };
+}
+function listResult(found: StoredBill[]) {
+  const visible = found.slice(0, PAGE_SIZE);
+  return { bills: visible.map(summary), nextCursor: found.length > PAGE_SIZE ? encodeCursor(visible[visible.length - 1]) : null };
+}
 const missing = () => new LedgerError('BILL_NOT_FOUND', '这张账单不存在或无法访问。', 404);
 
 export class LedgerService {
@@ -67,11 +75,18 @@ export class LedgerService {
     const ownerHash = await this.owner(token);
     const cursor = decodeCursor(cursorValue);
     const found = await this.storage.listBills(ownerHash, cursor, PAGE_SIZE + 1);
-    const visible = found.slice(0, PAGE_SIZE);
-    return {
-      bills: visible.map(bill => ({ id: bill.id, createdAt: bill.createdAt, visibility: bill.visibility, period: bill.report.period, totals: bill.report.totals, reviewCount: bill.report.warnings.filter(warning => warning.severity === 'review').length })),
-      nextCursor: found.length > PAGE_SIZE ? encodeCursor(visible[visible.length - 1]) : null,
-    };
+    return listResult(found);
+  }
+
+  async listPublicBills(cursorValue: string | null) {
+    return listResult(await this.storage.listPublicBills(decodeCursor(cursorValue), PAGE_SIZE + 1));
+  }
+
+  async getPublicBill(id: string) {
+    validateId(id);
+    const bill = await this.storage.findPublicBill(id);
+    if (!bill) throw missing();
+    return { id: bill.id, createdAt: bill.createdAt, report: bill.report };
   }
 
   async getBill(token: string | null, id: string) {

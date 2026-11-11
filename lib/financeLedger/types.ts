@@ -14,6 +14,8 @@ export interface LedgerStorage {
   claimLegacySession(tokenHash: string, accountHash: string): Promise<boolean>;
   insertBill(bill: StoredBill): Promise<{ bill: StoredBill; created: boolean }>;
   listBills(ownerHash: string, cursor: BillCursor | null, limit: number): Promise<StoredBill[]>;
+  listPublicBills(cursor: BillCursor | null, limit: number): Promise<StoredBill[]>;
+  findPublicBill(id: string): Promise<StoredBill | null>;
   findBill(ownerHash: string, id: string): Promise<StoredBill | null>;
   assignShareToken(ownerHash: string, id: string, token: string): Promise<StoredBill | null>;
   setVisibility(ownerHash: string, id: string, visibility: Visibility): Promise<StoredBill | null>;

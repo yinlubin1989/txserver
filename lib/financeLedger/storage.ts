@@ -21,6 +21,7 @@ const billSchema = new Schema<BillDocument>({
 }, { versionKey: false });
 billSchema.index({ ownerHash: 1, clientRequestId: 1 }, { unique: true });
 billSchema.index({ ownerHash: 1, createdAt: -1, _id: -1 });
+billSchema.index({ visibility: 1, deletedAt: 1, createdAt: -1, _id: -1 });
 billSchema.index({ shareToken: 1 }, { unique: true, partialFilterExpression: { shareToken: { $type: 'string' } } });
 const Session = (mongoose.models.FinanceLedgerSession as Model<SessionDocument> | undefined) ?? mongoose.model<SessionDocument>('FinanceLedgerSession', sessionSchema);
 const SavedBill = (mongoose.models.FinanceLedgerBill as Model<BillDocument> | undefined) ?? mongoose.model<BillDocument>('FinanceLedgerBill', billSchema);
@@ -88,6 +89,18 @@ export const mongoLedgerStorage: LedgerStorage = {
     const owners = await ownerFilter(ownerHash);
     const query = cursor ? { ownerHash: owners, deletedAt: null, $or: [{ createdAt: { $lt: new Date(cursor.createdAt) } }, { createdAt: new Date(cursor.createdAt), _id: { $lt: cursor.id } }] } : { ownerHash: owners, deletedAt: null };
     return (await SavedBill.find(query).sort({ createdAt: -1, _id: -1 }).limit(limit).maxTimeMS(10000).lean()).map(bill);
+  },
+  async listPublicBills(cursor, limit) {
+    await ready();
+    const after = cursor ? { $or: [{ createdAt: { $lt: new Date(cursor.createdAt) } },
+      { createdAt: new Date(cursor.createdAt), _id: { $lt: cursor.id } }] } : {};
+    return (await SavedBill.find({ visibility: 'public', deletedAt: null, ...after })
+      .sort({ createdAt: -1, _id: -1 }).limit(limit).maxTimeMS(10000).lean()).map(bill);
+  },
+  async findPublicBill(id) {
+    await ready();
+    const found = await SavedBill.findOne({ _id: id, visibility: 'public', deletedAt: null }).maxTimeMS(10000).lean();
+    return found ? bill(found) : null;
   },
   async findBill(ownerHash, id) {
     await ready(); const found = await SavedBill.findOne({ _id: id, ownerHash: await ownerFilter(ownerHash), deletedAt: null }).maxTimeMS(10000).lean(); return found ? bill(found) : null;
