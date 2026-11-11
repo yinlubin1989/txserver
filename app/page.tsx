@@ -5,6 +5,7 @@ import styles from "./home.module.css";
 const groups = [
   { title: "内容", english: "COLLECTION", links: [
     { href: "/photos", title: "相册", detail: "留住日常的片刻", english: "PHOTOS" },
+    { href: "/notes", title: "记事本", detail: "粘贴账目，统计月结", english: "NOTES" },
   ] },
 ];
 const services = [
