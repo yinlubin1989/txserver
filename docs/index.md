@@ -20,6 +20,8 @@
 - [AI Passport 对讲中继与后台管理](ai-passport-intercom.md) — 中继地址、管理面板与运维说明
 - [Mihomo 代理服务使用文档](mihomo-proxy.md) — 订阅管理、节点切换与代理出口
 
+- [小程序微信身份与账本恢复](wechat-ledger.html) — 微信配置、旧账单迁移、公开与私有说明
+
 ## 服务器信息
 
 - **IP**：`82.157.107.78`

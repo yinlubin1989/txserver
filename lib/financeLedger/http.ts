@@ -7,7 +7,7 @@ import { TOKEN_PATTERN } from './validation';
 export const ledgerService = new LedgerService(mongoLedgerStorage);
 const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
 export function completed(value: object, status = 200) { return Response.json({ schemaVersion: 1, status: 'completed', ...value }, { status, headers }); }
-export async function handle(request: Request, kind: 'session' | 'read' | 'write', action: (token: string | null) => Promise<Response>) {
+export async function handle(request: Request, kind: 'session' | 'login' | 'read' | 'write', action: (token: string | null) => Promise<Response>) {
   try {
     const authorization = request.headers.get('authorization');
     const token = authorization?.startsWith('Bearer ') ? authorization.slice(7) : null;

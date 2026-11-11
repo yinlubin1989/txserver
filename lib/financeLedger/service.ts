@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { LedgerError } from './errors';
+import { wechatAccount } from './wechatIdentity';
 import { decodeCursor, encodeCursor, TOKEN_PATTERN, validateId, validateSave } from './validation';
 import type { Bill, LedgerStorage, StoredBill } from './types';
 
@@ -22,11 +23,34 @@ export class LedgerService {
     return { token };
   }
 
+  async createWechatSession(raw: unknown, legacyToken: string | null,
+    identify: (code: string) => Promise<string> = wechatAccount) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
+        Object.keys(raw).length !== 1 || !('code' in raw) ||
+        typeof raw.code !== 'string' || !/^[A-Za-z0-9_-]{1,256}$/.test(raw.code)) {
+      throw new LedgerError('INVALID_LOGIN', '微信登录请求不正确，请重试。');
+    }
+    if (legacyToken !== null && !TOKEN_PATTERN.test(legacyToken)) {
+      throw new LedgerError('LEGACY_SESSION_INVALID', '旧账本凭证异常，暂时无法关联，请保留本地数据。', 409);
+    }
+    const accountHash = await identify(raw.code);
+    if (!TOKEN_PATTERN.test(accountHash)) throw new LedgerError('LOGIN_UNAVAILABLE', '微信登录暂时不可用，请重试。', 503);
+    if (legacyToken !== null && !await this.storage.claimLegacySession(hashToken(legacyToken), accountHash)) {
+      throw new LedgerError('LEGACY_SESSION_CONFLICT', '旧账本凭证无效或已关联其他微信，无法自动迁移。', 409);
+    }
+    const token = randomBytes(32).toString('hex');
+    const now = this.now();
+    const expiresAt = new Date(now.getTime() + 30 * 86400000).toISOString();
+    await this.storage.createWechatSession(hashToken(token), accountHash, now.toISOString(), expiresAt);
+    return { token, identity: 'wechat' as const, expiresAt };
+  }
+
   private async owner(token: string | null) {
     if (typeof token !== 'string' || !TOKEN_PATTERN.test(token)) throw new LedgerError('UNAUTHORIZED', '账本凭证缺失，请重新打开账本。', 401);
     const hash = hashToken(token);
-    if (!await this.storage.hasSession(hash)) throw new LedgerError('UNAUTHORIZED', '账本凭证无效，无法访问原账本。', 401);
-    return hash;
+    const ownerHash = await this.storage.sessionOwner(hash, this.now().toISOString());
+    if (ownerHash === null) throw new LedgerError('UNAUTHORIZED', '账本凭证无效，无法访问原账本。', 401);
+    return ownerHash;
   }
 
   async saveBill(token: string | null, raw: unknown) {

@@ -9,7 +9,9 @@ export type SaveInput = { report: FinanceReport; text: string; clientRequestId: 
 
 export interface LedgerStorage {
   createSession(tokenHash: string, createdAt: string): Promise<void>;
-  hasSession(tokenHash: string): Promise<boolean>;
+  sessionOwner(tokenHash: string, now: string): Promise<string | null>;
+  createWechatSession(tokenHash: string, accountHash: string, createdAt: string, expiresAt: string): Promise<void>;
+  claimLegacySession(tokenHash: string, accountHash: string): Promise<boolean>;
   insertBill(bill: StoredBill): Promise<{ bill: StoredBill; created: boolean }>;
   listBills(ownerHash: string, cursor: BillCursor | null, limit: number): Promise<StoredBill[]>;
   findBill(ownerHash: string, id: string): Promise<StoredBill | null>;
