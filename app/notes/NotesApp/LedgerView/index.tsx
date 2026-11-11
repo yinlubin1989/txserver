@@ -100,10 +100,14 @@ export function LedgerView() {
 
   return (
     <div className={styles.ledgerPage}>
-      <div className={styles.ledgerHeading}>
-        <h1 className={styles.ledgerTitle}>账本</h1>
-        {!hasLoaded || bills.length || error ? <Link href="/notes" className={styles.utilityButton}>去统计 <span aria-hidden="true">→</span></Link> : null}
-      </div>
+      <header className={styles.pageHead}>
+        <div>
+          <p className={styles.kicker}>LEDGER</p>
+          <h1 className={styles.pageTitle}>账本</h1>
+          <p className={styles.lede}>已保存的月结单。公开的账单所有人都能打开。</p>
+        </div>
+        <Link href="/notes" className={styles.headerLink}>去统计 <span aria-hidden="true">→</span></Link>
+      </header>
       <div className={styles.ledgerTabs} role="tablist" aria-label="账单范围">
         <button type="button" className={`${styles.ledgerTab} ${scope === "mine" ? styles.ledgerTabActive : ""}`} role="tab" aria-selected={scope === "mine"} disabled={!!busyId} onClick={() => switchScope("mine")}>我的账单</button>
         <button type="button" className={`${styles.ledgerTab} ${scope === "public" ? styles.ledgerTabActive : ""}`} role="tab" aria-selected={scope === "public"} disabled={!!busyId} onClick={() => switchScope("public")}>公开账单</button>
@@ -126,8 +130,7 @@ export function LedgerView() {
       {hasLoaded && !loading && !error && bills.length === 0 ? (
         <div className={styles.emptyState}>
           <div className={styles.emptyTitle}>{scope === "public" ? "暂无公开账单" : "账本还是空的"}</div>
-          <p className={styles.emptyCaption}>{scope === "public" ? "设为公开的账单会出现在这里。" : "统计完成后，保存第一张月结单。"}</p>
-          <Link href="/notes" className={`${styles.utilityButton} ${styles.emptyAction}`}>去统计 <span aria-hidden="true">→</span></Link>
+          <p className={styles.emptyCaption}>{scope === "public" ? "设为公开的账单会出现在这里。" : "统计完成后，第一张月结单会出现在这里。"}</p>
         </div>
       ) : null}
       {bills.length ? (
@@ -135,20 +138,20 @@ export function LedgerView() {
           {bills.map((bill) => (
             <article className={styles.savedBill} key={bill.id}>
               <Link className={styles.billContent} href={scope === "public" ? `/notes?publicBillId=${bill.id}` : `/notes?billId=${bill.id}`} aria-label={`查看${bill.title}`} aria-disabled={!!busyId} onClick={(event) => { if (busyId) event.preventDefault(); }}>
-                <div className={styles.billHeading}><span className={styles.billTitle}>{bill.title}</span></div>
-                <div className={styles.billTotals}>
-                  <div><span className={styles.totalLabel}>收入</span><span className={`${styles.number} ${styles.totalAmount}`}>{bill.income}</span></div>
-                  <div className={styles.expenseTotal}><span className={styles.totalLabel}>支出</span><span className={`${styles.number} ${styles.totalAmount}`}>{bill.expense}</span></div>
-                  <div className={styles.profitTotal}><span className={styles.totalLabel}>利润</span><span className={`${styles.number} ${styles.totalAmount}`}>{bill.profit}</span></div>
-                </div>
-                <div className={styles.billFooter}>
-                  {bill.reviewCount > 0 ? <span className={styles.reviewNote}><span className={styles.reviewIcon}>!</span><span>{bill.reviewCount} 项待核对</span></span> : null}
+                <div className={styles.billHeading}>
+                  <span className={styles.billTitle}>{bill.title}</span>
                   <span className={styles.savedTime}>{bill.savedAt}</span>
                 </div>
+                <div className={styles.billTotals}>
+                  <div><span className={styles.totalLabel}>收入</span><span className={`${styles.number} ${styles.totalAmount}`}>{bill.income}</span></div>
+                  <div><span className={styles.totalLabel}>支出</span><span className={`${styles.number} ${styles.totalAmount}`}>{bill.expense}</span></div>
+                  <div className={styles.profitTotal}><span className={styles.totalLabel}>利润</span><span className={`${styles.number} ${styles.totalAmount}`}>{bill.profit}</span></div>
+                </div>
+                {bill.reviewCount > 0 ? <div className={styles.billFooter}><span className={styles.reviewNote}><span className={styles.reviewIcon}>!</span><span>{bill.reviewCount} 项待核对</span></span></div> : null}
               </Link>
               {scope === "mine" ? (
                 <button type="button" className={styles.billManage} disabled={!!busyId || loading || loadingMore} aria-label={`管理${bill.title}，当前${bill.visibilityLabel}`} onClick={() => { setNotice(""); setMenuBill(bill); }}>
-                  <span>{busyId === bill.id ? "处理中" : bill.visibilityLabel}</span><span className={styles.manageDots} aria-hidden="true">···</span>
+                  <span>{busyId === bill.id ? "处理中" : bill.visibilityLabel}</span>
                 </button>
               ) : null}
             </article>

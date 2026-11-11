@@ -269,15 +269,27 @@ export function StatisticsView({ target }: { target: StatisticsTarget }) {
 
   return (
     <div className={`${styles.page} ${report ? styles.pageHasReport : ""}`}>
-      {sharedView ? null : (
-        <div className={styles.toolbar}>
-          <Link href="/notes/ledger" className={styles.utilityButton} aria-disabled={saving} onClick={(event) => { if (saving) event.preventDefault(); }}>我的记事本 <span aria-hidden="true">→</span></Link>
-        </div>
+      {report ? (
+        sharedView ? null : (
+          <div className={styles.compactBar}>
+            <Link href="/notes/ledger" className={styles.headerLink} aria-disabled={saving} onClick={(event) => { if (saving) event.preventDefault(); }}>账本 <span aria-hidden="true">→</span></Link>
+          </div>
+        )
+      ) : (
+        <header className={styles.pageHead}>
+          <div>
+            <p className={styles.kicker}>NOTES</p>
+            <h1 className={styles.pageTitle}>记事本</h1>
+            <p className={styles.lede}>粘贴一个月的记账文字，生成花店月结单。</p>
+          </div>
+          {sharedView ? null : <Link href="/notes/ledger" className={styles.headerLink} aria-disabled={saving} onClick={(event) => { if (saving) event.preventDefault(); }}>账本 <span aria-hidden="true">→</span></Link>}
+        </header>
       )}
       {loadingBill ? <p className={styles.loadingState}>正在打开账单…</p> : null}
       {!sharedView && !loadingBill && showInput ? (
         <div className={styles.inputPanel}>
           <div className={styles.inputPaper}>
+            <div className={styles.sheetHead}><span>记账原文</span><span className={styles.number}>{text.length.toLocaleString("en-US")} / 20,000</span></div>
             <div className={styles.inputEditor}>
               {text ? null : <div className={styles.inputPlaceholder} aria-hidden="true">{PLACEHOLDER}</div>}
               <textarea className={styles.ledgerInput} value={text} maxLength={20000} disabled={loading || saving} aria-label="记账原文，可粘贴或输入本月的记账文字" onChange={(event) => {
@@ -287,13 +299,14 @@ export function StatisticsView({ target }: { target: StatisticsTarget }) {
                 setError("");
               }} />
             </div>
-            <div className={styles.inputFooter}><span className={styles.number}>{text.length.toLocaleString("en-US")} / 20,000</span></div>
+            <div className={styles.sheetFoot}>
+              <p className={styles.publishHint}>统计后自动保存为公开账单，所有用户可见。</p>
+              <div className={styles.inputActions}>
+                <button type="button" className={styles.secondaryButton} onClick={paste} disabled={loading || saving}>粘贴</button>
+                <button type="button" className={styles.primaryButton} onClick={submit} disabled={loading || saving}>{loading ? "正在识别并核算…" : "开始统计"}{loading ? null : <span aria-hidden="true">→</span>}</button>
+              </div>
+            </div>
           </div>
-          <div className={styles.inputActions}>
-            <button type="button" className={styles.secondaryButton} onClick={paste} disabled={loading || saving}>粘贴</button>
-            <button type="button" className={styles.primaryButton} onClick={submit} disabled={loading || saving}>{loading ? "正在识别并核算…" : "开始统计"} {loading ? null : <span aria-hidden="true">→</span>}</button>
-          </div>
-          <p className={styles.publishHint}>统计后自动保存为公开账单，所有用户可见。</p>
         </div>
       ) : null}
       {error ? (
