@@ -9,7 +9,7 @@
 - API 域名：`https://yinlubin.cn`
 - 服务端配置：`.env.production.local` 的 `WECHAT_APP_ID`、`WECHAT_APP_SECRET`。
 - 开发环境配置：`.env.local`，开发者工具连接本地 8000 端口。
-- [查看测试站 AppSecret 记录](wechat-credentials.html)：按站点所有者要求，明文记录仅在服务器生成，不进入 GitHub。此页面可被拿到地址的人查看。
+- AppSecret 已保存到服务端环境配置，本文档不展示密钥值；没有公开密钥记录页。
 
 获取位置：微信公众平台 → 小程序后台 → 开发管理 → 开发设置 → 开发者 ID → AppSecret。AppSecret 是小程序开发者密钥，不是微信密码，也不是 DeepSeek Key。
 
