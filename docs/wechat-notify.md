@@ -84,6 +84,18 @@ curl --request POST 'https://yinlubin.cn/api/wechat/notify' \
 - `requests/` 保存请求摘要、状态及返回结果，不保存消息正文；不要在可能重试期间删除这些记录。
 - 登录失效时需要重新绑定获取有效 botToken，更新配置并重启监听。该接口不是微信小程序 AppSecret 接口，二者凭证不能混用。
 
+部署时直接让 PM2 执行 Node，避免 PM2 的脚本包装器影响 ESM 入口判断：
+
+```bash
+cd /root/txserver
+pm2 start /root/.nvm/versions/node/v24.14.1/bin/node --name wechat-notify \
+  --interpreter none --kill-timeout 5000 --restart-delay 10000 -- \
+  --env-file=/root/txserver/.env.production.local /root/txserver/lib/wechatNotify/listener.mjs
+pm2 save
+```
+
+监听器更新后使用 `pm2 restart wechat-notify`；接口代码更新仍需生产构建并重启 `txserver`。
+
 ## 通道限制
 
 微信 iLink 使用入站消息中的 context_token。长期不互动的会话可能拒绝主动推送；没有在此集成中得到验证的固定有效期或通用后台续期接口。遇到发送拒绝，先检查微信通道/凭证，必要时在微信向机器人发一条消息，再核对监听状态。`ret=-2` 不直接等同“会话过期”或“限流”。登录失效则需重新绑定。
