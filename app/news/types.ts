@@ -40,11 +40,12 @@ export interface ReportListItem {
 }
 
 export const AUDIO_STATUS_LABELS: Record<AudioStatus, string> = {
-  not_requested: "原始简报", pending: "正在生成语音", ready: "可播放语音", failed: "语音暂不可用",
+  not_requested: "等待生成语音", pending: "正在生成语音", ready: "可播放语音", failed: "语音暂不可用",
 };
 
-export function isProcessing(status: ReportStatus) {
-  return status === "queued" || status === "processing";
+export function isAwaitingAudio(status: ReportStatus) {
+  // Legacy idle reports are queued automatically by the worker, never by a page request.
+  return status === "idle" || status === "queued" || status === "processing";
 }
 
 export function formatReportDate(value: string) {

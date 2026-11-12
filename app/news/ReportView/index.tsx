@@ -1,14 +1,12 @@
 "use client";
 
-import { formatReportDate, formatReportTime, isProcessing, type NewsReport } from "../types";
+import { formatReportDate, formatReportTime, isAwaitingAudio, type NewsReport } from "../types";
 import { useReport } from "./useReport";
 import { AudioPlayer } from "./components/AudioPlayer";
 import styles from "./style.module.css";
 
 export function ReportView({ initialReport }: { initialReport: NewsReport }) {
-  const { report, error, retry, isRequestingAudio, requestAudio } = useReport(initialReport);
-  const processing = isProcessing(report.status);
-  const isGenerating = processing || isRequestingAudio;
+  const { report, error, retry } = useReport(initialReport);
 
   return <article className={styles.report}>
     <header className={styles.header}>
@@ -16,12 +14,7 @@ export function ReportView({ initialReport }: { initialReport: NewsReport }) {
       <h1>{report.title}</h1>
       <p className={styles.updated}>收录于 {formatReportTime(report.createdAt)}<span>北京时间</span></p>
     </header>
-    {(report.status === "idle" || isGenerating) && <div className={styles.audioAction}>
-      <button type="button" onClick={requestAudio} disabled={isGenerating}>
-        {isGenerating ? "正在生成语音" : "生成语音"}<span aria-hidden="true">→</span>
-      </button>
-      <p role={isGenerating ? "status" : undefined}>{isGenerating ? "可以先阅读简报，语音生成后会自动显示。" : "朗读简报正文，生成后保存，再次播放无需生成。"}</p>
-    </div>}
+    {isAwaitingAudio(report.status) && <p className={styles.audioStatus} role="status">{report.status === "idle" ? "等待生成语音" : "正在生成语音"}，可以先阅读简报。</p>}
     {report.audio.status === "ready" && (report.audio.url ?
       <AudioPlayer key={report.audio.url} url={report.audio.url} transcript={report.audio.text} /> :
       <p className={styles.notice} role="alert">音频地址暂不可用，原始简报仍可阅读。</p>)}

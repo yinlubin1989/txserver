@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { isProcessing, type NewsReport } from "../types";
+import { isAwaitingAudio, type NewsReport } from "../types";
 
 const statuses = new Set(["idle", "queued", "processing", "completed", "partial", "failed"]);
 const audioStatuses = new Set(["not_requested", "pending", "ready", "failed"]);
@@ -31,7 +31,6 @@ export function useReport(initialReport: NewsReport) {
   const [report, setReport] = useState(initialReport);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
-  const [isRequestingAudio, setIsRequestingAudio] = useState(false);
   const requestController = useRef<AbortController | null>(null);
   const isMounted = useRef(true);
 
@@ -41,7 +40,7 @@ export function useReport(initialReport: NewsReport) {
   }, []);
 
   useEffect(() => {
-    if (!isProcessing(report.status)) return;
+    if (!isAwaitingAudio(report.status)) return;
     let disposed = false;
     let nextPoll: ReturnType<typeof setTimeout>;
     const controller = new AbortController();
@@ -52,7 +51,7 @@ export function useReport(initialReport: NewsReport) {
         if (disposed) return;
         setReport(updated);
         setError("");
-        if (isProcessing(updated.status)) nextPoll = setTimeout(poll, 3000);
+        if (isAwaitingAudio(updated.status)) nextPoll = setTimeout(poll, 3000);
       } catch (problem) {
         if (!disposed) setError(problem instanceof Error && problem.name !== "AbortError" ? problem.message : "连接超时，请重试获取更新。");
       } finally { clearTimeout(timeout); }
@@ -61,45 +60,10 @@ export function useReport(initialReport: NewsReport) {
     return () => { disposed = true; controller.abort(); clearTimeout(nextPoll); };
   }, [report.id, report.status, retry]);
 
-  async function requestAudio() {
-    if (report.status !== "idle" || requestController.current) return;
-    const controller = new AbortController();
-    requestController.current = controller;
-    setIsRequestingAudio(true);
-    setError("");
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    try {
-      const response = await fetch(`/api/news/${report.id}/audio`, { method: "POST", signal: controller.signal });
-      if (!response.ok) throw new Error("语音请求暂未确认。");
-      const updated = readReportResponse(await response.json(), report.id);
-      if (!isMounted.current) return;
-      setReport(updated);
-      if (updated.status === "idle") setError("尚未开始生成语音，可以再次点击按钮。");
-    } catch {
-      if (!isMounted.current) return;
-      // An uncertain POST is reconciled with one read; never automatically repeat a paid request.
-      const checkController = new AbortController();
-      requestController.current = checkController;
-      const checkTimeout = setTimeout(() => checkController.abort(), 15000);
-      try {
-        const updated = await readLatestReport(report.id, checkController.signal);
-        if (!isMounted.current) return;
-        setReport(updated);
-        setError(updated.status === "idle" ? "尚未确认语音请求，可以再次点击生成语音。" : "");
-      } catch {
-        if (isMounted.current) setError("请求结果尚未确认，请刷新状态查看。不会自动重复生成。");
-      } finally { clearTimeout(checkTimeout); }
-    } finally {
-      clearTimeout(timeout);
-      requestController.current = null;
-      if (isMounted.current) setIsRequestingAudio(false);
-    }
-  }
-
   async function refreshStatus() {
     if (requestController.current) return;
     setError("");
-    if (isProcessing(report.status)) { setRetry(value => value + 1); return; }
+    if (isAwaitingAudio(report.status)) { setRetry(value => value + 1); return; }
     const controller = new AbortController();
     requestController.current = controller;
     const timeout = setTimeout(() => controller.abort(), 15000);
@@ -111,5 +75,5 @@ export function useReport(initialReport: NewsReport) {
     } finally { clearTimeout(timeout); requestController.current = null; }
   }
 
-  return { report, error, isRequestingAudio, requestAudio, retry: refreshStatus };
+  return { report, error, retry: refreshStatus };
 }

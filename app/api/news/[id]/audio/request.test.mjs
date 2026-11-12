@@ -7,17 +7,18 @@ import { createReport, readReport, writeReport, listPendingReports } from '../..
 import { requestAudioResponse } from './request.mjs';
 
 const id = 'e'.repeat(64);
-async function fixture(t) {
+async function fixture(t, legacy = true) {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'news-details-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
-  await createReport({ id, notification: { title: '日报', content: '原文' }, reportDate: '2026-11-12' }, { directory });
+  const report = await createReport({ id, notification: { title: '日报', content: '原文' }, reportDate: '2026-11-12' }, { directory });
+  if (legacy) await writeReport({ ...report, status: 'idle', audio: { status: 'not_requested', url: null, text: null } }, { directory });
   return { directory, expectedOrigin: 'https://yinlubin.cn' };
 }
 function request(headers = {}, body) {
   return new Request(`https://yinlubin.cn/api/news/${id}/audio`, { method: 'POST', headers, ...(body === undefined ? {} : { body }) });
 }
 
-test('only an explicit same-origin POST queues audio, duplicate clicks reuse shared result', async t => {
+test('legacy same-origin POST remains compatible and duplicate clicks reuse shared result', async t => {
   const options = await fixture(t);
   assert.equal((await readReport(id, options)).status, 'idle');
   const responses = await Promise.all(Array.from({ length: 12 }, () => requestAudioResponse(request({ origin: 'https://yinlubin.cn', 'sec-fetch-site': 'same-origin' }), id, options)));
@@ -32,6 +33,16 @@ test('only an explicit same-origin POST queues audio, duplicate clicks reuse sha
   const cached = await (await requestAudioResponse(request(), id, options)).json();
   assert.equal(cached.report.status, 'failed'); assert.equal(cached.report.work, undefined);
   assert.deepEqual(await listPendingReports(options), []);
+});
+
+test('new reports are already queued and legacy POST does not create additional work', async t => {
+  const options = await fixture(t, false);
+  const before = await readReport(id, options);
+  assert.equal(before.status, 'queued'); assert.equal(before.audio.status, 'pending');
+  const response = await requestAudioResponse(request(), id, options);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await readReport(id, options), before);
+  assert.equal((await listPendingReports(options)).length, 1);
 });
 
 test('cross-site, sibling-site and foreign origins are rejected without starting work', async t => {

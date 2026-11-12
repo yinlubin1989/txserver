@@ -5,11 +5,7 @@
 .header h1 { margin: 22px 0 16px; font-size: clamp(28px, 5vw, 40px); font-weight: 600; line-height: 1.45; letter-spacing: -0.035em; overflow-wrap: anywhere; text-wrap: balance; }
 .updated { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; color: #888; font-size: 11px; font-variant-numeric: tabular-nums; }
 .updated > span { color: #aaa; }
-.audioAction { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 28px; }
-.audioAction button { display: inline-flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 25px; padding: 10px 17px; border: 1px solid #171717; background: #fff; color: #171717; font-size: 13px; cursor: pointer; }
-.audioAction button:hover:enabled { background: #f5f5f5; }
-.audioAction button:disabled { border-color: #d5d5d5; color: #888; cursor: default; }
-.audioAction p { margin: 0; color: #888; font-size: 12px; line-height: 1.8; }
+.audioStatus { margin: 0 0 28px; color: #888; font-size: 12px; line-height: 1.8; }
 .notice { margin: 0 0 24px; color: #777; font-size: 12px; line-height: 1.8; }
 .notice p { margin: 0; }
 .notice button { min-height: 36px; padding: 5px 0; background: none; border: 0; color: #171717; cursor: pointer; font-size: 12px; }
