@@ -62,7 +62,7 @@ Body: {"title":"标题","content":"正文","type":"日报","time":"展示时间"
 
 只接受以上五个字段，所有提供的值都必须是字符串；额外字段、数字或 `null` 会返回 400。可选字段不需要时直接省略。
 
-正文 JSON 最多 16 KB；普通通知拼接后的消息最多 10,000 字节。调用方不能上传图片、指定任意接收人或要求群发。`grokbot` 的阅读图和音频由服务端生成；日报调度由调用方完成。聊天自动回复由后台监听器独立处理。
+正文 JSON 最多 16 KB；所有请求按标题、正文、时间拼接检查，总计最多 10,000 字节（包括 grokbot）。调用方不能上传图片、指定任意接收人或要求群发。`grokbot` 的阅读图和音频由服务端生成；日报调度由调用方完成。聊天自动回复由后台监听器独立处理。
 
 ```bash
 curl --request POST 'https://yinlubin.cn/api/wechat/notify' \
@@ -96,6 +96,7 @@ curl --request POST 'https://yinlubin.cn/api/wechat/notify' \
 
 | HTTP | 情况 | 处理 |
 | --- | --- | --- |
+| 207 | grokbot 同编号 POST 重试返回已保存的 partial 结果 | 查看 parts，不自动重放整组 |
 | 400 / 413 / 415 | 请求格式、字段或长度错误 | 修正请求 |
 | 401 | 通知密钥错误 | 核对独立通知密钥 |
 | 408 | REQUEST_TIMEOUT，读取请求超过 10 秒，尚未发送 | 可沿用原编号重试 |
@@ -150,7 +151,7 @@ curl --request POST 'https://yinlubin.cn/api/wechat/notify' \
 
 终态的 `parts.image`、`parts.text`、`parts.audio` 分别提供 `status` 与可选 `code`。单部分状态为 `accepted`、`submitted`、`failed` 或 `unknown`；处理中还可出现 `not_started`、`sending`。被中断且未尝试的部分保留 `not_started`。`submitted` 带 `deliveryStatus: "unknown"`。生成失败不会伪造空白图或静音文件。
 
-同一 Idempotency-Key 重试只查询已有结果。已部分发出的新闻不会自动重放；如需补发，应先核实微信实际收到的内容，避免重复。排队超过 24 小时的新闻作废，不发送过期内容。服务重启会继续尚未开始的任务；处理中断的任务标为 unknown，由人工核对。
+同一 Idempotency-Key 重试只查询已有结果。POST 重试沿用已保存的 HTTP 状态：排队/处理/accepted/submitted 为 202，partial 为 207，failed/unknown 为 502；GET 查询成功统一 200，均须读取业务 status。已部分发出的新闻不会自动重放；如需补发，应先核实微信实际收到的内容，避免重复。排队超过 24 小时的新闻作废，不发送过期内容。服务重启会继续尚未开始的任务；处理中断的任务标为 unknown，由人工核对。
 
 ### 新闻服务配置
 
@@ -215,7 +216,7 @@ curl 'https://yinlubin.cn/api/wechat/notify/status' \
 - 同一机器人账号仅运行一个轮询程序，不与 cc-connect 或 Hermes 网关同时轮询。
 - 监听器用 `listener.lock` 防止重复启动。正常 SIGTERM 会释放；异常断电/SIGKILL 后，必须先确认锁里 PID 已退出，再删除旧锁并重启。
 - 目录权限 700、文件权限 600；密钥不进入文档、Git、URL 查询参数或日志。
-- `requests/` 保存请求摘要、状态及返回结果，不保存消息正文；不要在可能重试期间删除这些记录。
+- `requests/` 保存请求摘要、状态及返回结果；普通通知不保存正文，grokbot 新闻在 queued/processing 期间暂存正文，结束后删除正文。不要在可能重试期间删除去重记录。
 - 登录失效时需要重新绑定获取有效 botToken，更新配置并重启监听。该接口不是微信小程序 AppSecret 接口，二者凭证不能混用。
 
 部署时直接让 PM2 执行 Node，避免 PM2 的脚本包装器影响 ESM 入口判断：
@@ -234,7 +235,7 @@ pm2 save
 
 微信 iLink 使用入站消息中的 context_token。长期不互动的会话可能拒绝主动推送；没有在此集成中得到验证的固定有效期或通用后台续期接口。遇到发送拒绝，先检查微信通道/凭证，必要时在微信向机器人发一条消息，再核对监听状态。`ret=-2` 不直接等同“会话过期”或“限流”。登录失效则需重新绑定。
 
-协议依据：[腾讯 openclaw-weixin 协议](https://github.com/Tencent/openclaw-weixin/blob/main/docs/protocol.md)。此处只实现独立文本通知及必要的会话监听。
+协议依据：[腾讯 openclaw-weixin 协议](https://github.com/Tencent/openclaw-weixin/blob/main/docs/protocol.md)。此处实现独立通知及必要的会话监听。
 
 ## 可选文字自动回复
 
@@ -276,7 +277,7 @@ pm2 restart wechat-notify
 
 停掉监听器不会关闭通知 HTTP 接口；接口仍可能使用已缓存的会话发送。仅关闭 AI 自动回复时，把 `.env.production.local` 的 `WECHAT_NOTIFY_AUTO_REPLY` 设为 `false`，然后重启 `wechat-notify`。
 
-`DEEPSEEK_MODEL` 与现有收支统计共用。修改它会影响两项功能；修改后需要分别重启 `wechat-notify` 和 `txserver` 才能让两边加载新环境配置。
+`DEEPSEEK_MODEL` 由收支统计、微信自动回复和新闻语音摘要共用。修改后需要分别重启 `wechat-notify`、`wechat-news` 和 `txserver` 才能让所有服务加载新环境配置。
 
 ## 数据与能力边界
 
