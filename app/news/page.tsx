@@ -3,11 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { listReports } from "@/lib/newsReports/storage.mjs";
 import { BackLink, PageShell, SiteFooter } from "../components/ui/PageKit";
-import { formatReportDate, REPORT_STATUS_LABELS, type ReportListItem } from "./types";
+import { AUDIO_STATUS_LABELS, formatReportDate, type ReportListItem } from "./types";
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "日报 · Lubin Yin", description: "每日资讯、来源与重点语音摘要。" };
+export const metadata: Metadata = { title: "日报 · Lubin Yin", description: "每日简报，随时阅读与收听。" };
 
 export default async function NewsPage({ searchParams }: { searchParams: Promise<{ page?: string | string[] }> }) {
   const { page: parameter } = await searchParams;
@@ -31,7 +31,7 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
                 <div className={styles.content}>
                   <h2>{item.title}</h2>
                   <p className={styles.excerpt}>{item.excerpt}</p>
-                  <p className={styles.metadata}><span>{REPORT_STATUS_LABELS[item.status]}</span>{item.audioStatus === "ready" && <span>可听重点</span>}</p>
+                  <p className={styles.metadata}>{AUDIO_STATUS_LABELS[item.audioStatus]}</p>
                 </div>
                 <span className={styles.arrow} aria-hidden="true">→</span>
               </Link>

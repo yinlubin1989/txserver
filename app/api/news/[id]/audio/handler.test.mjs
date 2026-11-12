@@ -8,11 +8,11 @@ import { audioResponse } from './handler.mjs';
 
 const id = 'c'.repeat(64);
 const mp3 = Buffer.concat([Buffer.from('ID3'), Buffer.alloc(197, 5)]);
-async function fixture(t, ready = true) {
+async function fixture(t, ready = true, audio = mp3) {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'news-audio-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const report = await createReport({ id, notification: { title: '日报', content: '测试原文' }, reportDate: '2026-11-12' }, { directory });
-  await saveAudio(id, mp3, { directory });
+  await saveAudio(id, audio, { directory });
   if (ready) await writeReport({ ...report, status: 'processing', audio: { status: 'ready', url: `/api/news/${id}/audio` } }, { directory });
   return { directory };
 }
@@ -63,4 +63,15 @@ test('missing ready audio is a storage failure, never an empty successful stream
   await unlink(path.join(options.directory, 'audio', `${id}.mp3`));
   const response = await audioResponse(request(), id, options);
   assert.equal(response.status, 503); assert.equal((await response.json()).code, 'NEWS_AUDIO_MISSING');
+});
+
+test('long original narration supports seeking beyond the former two-megabyte limit', async t => {
+  const audio = Buffer.alloc(3 * 1024 * 1024, 6);
+  audio.write('ID3');
+  const options = await fixture(t, true, audio);
+  const start = 2 * 1024 * 1024 + 200;
+  const response = await audioResponse(request('GET', `bytes=${start}-${start + 99}`), id, options);
+  assert.equal(response.status, 206);
+  assert.equal(response.headers.get('content-range'), `bytes ${start}-${start + 99}/${audio.length}`);
+  assert.equal((await response.arrayBuffer()).byteLength, 100);
 });

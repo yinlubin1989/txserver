@@ -4,7 +4,7 @@ import styles from "./home.module.css";
 
 const groups = [
   { title: "内容", english: "COLLECTION", links: [
-    { href: "/news", title: "日报", detail: "每日资讯，读听重点", english: "DAILY BRIEF" },
+    { href: "/news", title: "日报", detail: "每日简报，随时读听", english: "DAILY BRIEF" },
     { href: "/photos", title: "相册", detail: "留住日常的片刻", english: "PHOTOS" },
     { href: "/notes", title: "记事本", detail: "粘贴账目，统计月结", english: "NOTES" },
   ] },

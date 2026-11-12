@@ -6,7 +6,7 @@ import { ReportView } from "../ReportView";
 import type { NewsReport } from "../types";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "日报精读 · Lubin Yin", description: "完整日报、参考来源与重点语音摘要。" };
+export const metadata: Metadata = { title: "日报 · Lubin Yin", description: "阅读原始简报，收听正文朗读。" };
 
 export default async function ReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

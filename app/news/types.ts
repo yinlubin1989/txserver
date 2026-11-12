@@ -24,7 +24,7 @@ export interface NewsReport {
   };
   sources: { id: string; url: string; title: string; siteName: string | null; publishedAt: string | null }[];
   warnings: { code: string; message: string }[];
-  audio: { status: AudioStatus; url: string | null };
+  audio: { status: AudioStatus; url: string | null; text: string | null };
 }
 
 export interface ReportListItem {
@@ -39,8 +39,8 @@ export interface ReportListItem {
   audioStatus: AudioStatus;
 }
 
-export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
-  idle: "原始简报", queued: "等待补充", processing: "正在补充", completed: "精读版", partial: "部分完成", failed: "补充未完成",
+export const AUDIO_STATUS_LABELS: Record<AudioStatus, string> = {
+  not_requested: "原始简报", pending: "正在生成语音", ready: "可播放语音", failed: "语音暂不可用",
 };
 
 export function isProcessing(status: ReportStatus) {
@@ -56,11 +56,4 @@ export function formatReportTime(value: string) {
   return new Intl.DateTimeFormat("zh-CN", {
     timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false,
   }).format(new Date(value));
-}
-
-export function safeSourceUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password ? url.href : null;
-  } catch { return null; }
 }

@@ -1,61 +1,32 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { formatReportDate, formatReportTime, isProcessing, safeSourceUrl, type NewsReport } from "../types";
+import { formatReportDate, formatReportTime, isProcessing, type NewsReport } from "../types";
 import { useReport } from "./useReport";
 import { AudioPlayer } from "./components/AudioPlayer";
 import styles from "./style.module.css";
 
-function Citations({ ids, sources }: { ids: string[]; sources: NewsReport["sources"] }) {
-  return <>{ids.map(id => {
-    const index = sources.findIndex(source => source.id === id);
-    return index < 0 ? null : <sup className={styles.citation} key={id}><a href={`#source-${id}`} aria-label={`查看来源 ${index + 1}`}>[{index + 1}]</a></sup>;
-  })}</>;
-}
-
-function SectionTitle({ number, children }: { number: string; children: ReactNode }) {
-  return <h2 className={styles.sectionTitle}><span>{number}</span>{children}</h2>;
-}
-
 export function ReportView({ initialReport }: { initialReport: NewsReport }) {
-  const { report, error, retry, isRequestingDetails, requestDetails } = useReport(initialReport);
+  const { report, error, retry, isRequestingAudio, requestAudio } = useReport(initialReport);
   const processing = isProcessing(report.status);
+  const isGenerating = processing || isRequestingAudio;
+
   return <article className={styles.report}>
     <header className={styles.header}>
       <div className={styles.kicker}><span>GROKBOT / DAILY BRIEF</span><time dateTime={report.reportDate}>{formatReportDate(report.reportDate)}</time></div>
       <h1>{report.title}</h1>
-      <p className={styles.updated}>{report.status === "idle" ? "收录于" : "资料更新于"} {formatReportTime(report.updatedAt)}<span>北京时间</span></p>
+      <p className={styles.updated}>收录于 {formatReportTime(report.createdAt)}<span>北京时间</span></p>
     </header>
-    {(report.status === "idle" || processing || isRequestingDetails) && <div className={styles.detailsAction}>
-      <button type="button" onClick={requestDetails} disabled={processing || isRequestingDetails}>
-        {processing || isRequestingDetails ? "正在拉取详情" : "拉取详情"}<span aria-hidden="true">→</span>
+    {(report.status === "idle" || isGenerating) && <div className={styles.audioAction}>
+      <button type="button" onClick={requestAudio} disabled={isGenerating}>
+        {isGenerating ? "正在生成语音" : "生成语音"}<span aria-hidden="true">→</span>
       </button>
-      <p>{processing || isRequestingDetails ? "可以先阅读原始简报，完成后页面会自动更新。" : "联网补充内容并生成语音，完成后会保存。"}</p>
+      <p role={isGenerating ? "status" : undefined}>{isGenerating ? "可以先阅读简报，语音生成后会自动显示。" : "朗读简报正文，生成后保存，再次播放无需生成。"}</p>
     </div>}
-    {report.status !== "failed" && report.audio.status !== "not_requested" && (report.audio.status === "ready" && report.audio.url ? <AudioPlayer key={report.audio.url} url={report.audio.url} transcript={report.body?.voiceScript ?? ""} /> :
-      <div className={styles.audioStatus}><span>听重点</span><span>{report.audio.status === "pending" ? "语音摘要准备中" : "语音摘要暂不可用"}</span></div>)}
-    {processing && <p className={styles.progress} role="status"><span className={styles.progressDot} aria-hidden="true" />{report.status === "queued" ? "已加入详情处理队列" : "正在联网补充资料"}</p>}
+    {report.audio.status === "ready" && (report.audio.url ?
+      <AudioPlayer key={report.audio.url} url={report.audio.url} transcript={report.audio.text} /> :
+      <p className={styles.notice} role="alert">音频地址暂不可用，原始简报仍可阅读。</p>)}
     {error && <div className={styles.notice} role="alert"><p>{error}</p><button type="button" onClick={retry}>刷新状态 →</button></div>}
-    {report.status === "failed" && <div className={styles.notice} role="status"><p>详情未能完成，原始简报已保留。</p></div>}
-    {report.warnings.length > 0 && <aside className={styles.notice} aria-label="资料说明"><p className={styles.noticeTitle}>资料说明</p><ul>{report.warnings.map((warning, index) => <li key={`${warning.code}-${index}`}>{warning.message}</li>)}</ul></aside>}
-    {report.status !== "failed" && report.body && <>
-      {report.body.intro && <p className={styles.intro}>{report.body.intro}</p>}
-      {report.body.highlights.length > 0 && <section className={styles.highlights} aria-labelledby="highlights-heading"><h2 id="highlights-heading" className={styles.highlightsTitle}>今日要点<span>AT A GLANCE</span></h2><ol>{report.body.highlights.map((point, index) => <li key={index}><span className={styles.bullet}>{String(index + 1).padStart(2, "0")}</span><p>{point.text}<Citations ids={point.sourceIds} sources={report.sources} /></p></li>)}</ol></section>}
-      {report.body.sections.map((section, index) => <section className={styles.section} key={index}>
-        <SectionTitle number={String(index + 1).padStart(2, "0")}>{section.title}</SectionTitle>
-        {section.paragraphs.map((paragraph, paragraphIndex) => <p className={styles.paragraph} key={paragraphIndex}>
-          {paragraph.kind !== "fact" && <span className={styles.kind}>{paragraph.kind === "analysis" ? "分析" : "待核实"}</span>}
-          {paragraph.text}<Citations ids={paragraph.sourceIds} sources={report.sources} />
-        </p>)}
-      </section>)}
-    </>}
-    {report.status !== "failed" && report.sources.length > 0 && <section className={styles.sources} aria-labelledby="sources-heading">
-      <h2 id="sources-heading">参考来源<span>SOURCES</span></h2>
-      <ol>{report.sources.map((source, index) => {
-        const url = safeSourceUrl(source.url);
-        return <li id={`source-${source.id}`} key={source.id}><span className={styles.sourceIndex}>{String(index + 1).padStart(2, "0")}</span><div>{url ? <a href={url} target="_blank" rel="noopener noreferrer">{source.title}<span aria-hidden="true"> ↗</span></a> : <span>{source.title}</span>}<p>{source.siteName}{source.publishedAt && <time dateTime={source.publishedAt}>{formatReportTime(source.publishedAt)}</time>}</p></div></li>;
-      })}</ol>
-    </section>}
+    {report.audio.status === "failed" && <p className={styles.notice} role="status">语音暂时未能生成，原始简报仍可阅读。</p>}
     <section id="original" className={styles.original} aria-labelledby="original-heading">
       <h2 id="original-heading">原始简报<span>ORIGINAL</span></h2>
       {report.original.time && <p className={styles.originalTime}>{report.original.time}</p>}

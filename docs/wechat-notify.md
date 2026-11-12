@@ -4,7 +4,7 @@
 
 ## 用途
 
-外部应用通过公网 HTTPS POST，将日报、资讯或提醒发送到站长预先绑定的微信机器人会话。txserver 直接调用腾讯 iLink HTTP 接口，不经过 cc-connect 或 Hermes。快讯和普通通知直接转发文字，不经过大模型。只有明确标记的 grokbot 日报生成公开网页，只有在网页点击“拉取详情”后，才联网补充资料并提供网页语音播放。调用方不能指定任意接收人。
+外部应用通过公网 HTTPS POST，将日报、资讯或提醒发送到站长预先绑定的微信机器人会话。txserver 直接调用腾讯 iLink HTTP 接口，不经过 cc-connect 或 Hermes。快讯和普通通知直接转发文字，不经过大模型。只有明确标记的 grokbot 日报生成公开网页，网页保留原始简报；点击“生成语音”后直接朗读原文，不搜索资料，也不调用模型改写或总结。调用方不能指定任意接收人。
 
 ## 快速上手
 
@@ -126,15 +126,15 @@ curl --request POST 'https://yinlubin.cn/api/wechat/notify' \
 
 每份日报发送一个固定 `Idempotency-Key`，例如 `grokbot-daily-2026-11-12-morning`；重试必须沿用。服务端先持久保存原日报和网页，再立即向微信发送原文字和末尾的“完整日报与语音：https://yinlubin.cn/news/<id>”。不等待联网或 TTS，不再发送阅读图片、MP3 文件或语音不可用提示。
 
-网页打开时只显示原始简报和“拉取详情”按钮，不调用模型、搜索或语音服务，也不轮询。只有点击按钮才持久排队，处理时显示“正在拉取详情”，每 3 秒检查一次状态，终态后停止。正文完成后先展示正文，再更新音频。完成后的结果和音频共享保存，重复打开或点击都不重复消费 token。公开列表为 [日报](https://yinlubin.cn/news)，首页也有入口；所有访客可阅读与播放，**日报内容是公开保存的**。列表每页 20 条、按日报日期及创建时间倒序；同日多份独立保存。上线前的旧通知不会自动补档。
+网页打开时只显示原始简报和“生成语音”按钮，不调用语音服务，也不轮询。只有点击按钮才持久排队，处理时显示“正在生成语音”，每 3 秒检查一次状态，终态后停止。音频生成后共享保存，重复打开或点击均复用已有结果。整个日报流程不调用大模型、不消耗模型 token。公开列表为 [日报](https://yinlubin.cn/news)，首页也有入口；所有访客可阅读与播放，**日报内容是公开保存的**。列表每页 20 条、按日报日期及创建时间倒序；同日多份独立保存。上线前的旧通知不会自动补档。
 
 ### 内容与音频
 
-用户点击后，后台围绕原日报最多规划 6 次搜索、读取最多 10 个来源，使用现有 DeepSeek Key 的 [Search／Fetch 接口](https://api-docs.deepseek.com/guides/search/)。优先原文和可靠来源；输出约 1,500–2,500 字的精读内容及短播报稿，实际素材不足时允许更短。来源、事实、分析和待核实信息分别说明，不凭模型记忆补编新闻。
+用户点击后，后台将原始简报正文直接交给 TTS，不搜索、不补充资料、不改写或生成摘要。仅从朗读稿中移除 HTTP(S) 链接，网页原文不变；数字、事实与措辞按原文保留。实际朗读稿通过公开接口的 `audio.text` 返回，网页可展开查看。正文只有链接、没有可朗读文字时会明确失败。
 
-正文按今日要点、重点事件详解、来源链接、原始日报展示。音频使用 edge-tts 中文音色，约 30–60 秒（短素材更短），只在网页上点击播放，支持暂停、拖动和倍速，不自动播放。播报稿会发送给 Microsoft Edge 在线语音服务。
+音频使用 edge-tts 中文音色，时长取决于原文长度，最多朗读 3,000 字。只在网页上点击播放，支持暂停、拖动和倍速，不自动播放。朗读稿会发送给 Microsoft Edge 在线语音服务，生成的 MP3 上限 8 MB。
 
-搜索、正文整理或音频失败均有明确说明，原始日报保留；音频失败不删除正文。网页公开内容只包含整理结果、来源与原日报，不暴露抓取全文、密钥、内部工作记录或微信凭证。
+音频失败时页面明确提示，原始简报保留。公开接口不暴露内部工作记录、密钥或微信凭证。旧“拉取详情”功能已停用，不会继续搜索或消耗模型 token。
 
 ### 响应与独立状态
 
@@ -161,21 +161,22 @@ curl --request POST 'https://yinlubin.cn/api/wechat/notify' \
 
 | 报告 status | 含义 |
 | --- | --- |
-| idle | 仅保存原始简报，尚未点击“拉取详情”，不调用 AI |
+| idle | 仅保存原始简报，尚未点击“生成语音” |
 | queued | 用户已点击，任务已持久保存，等待后台处理 |
-| processing | 正在联网、整理或生成语音 |
-| completed | 正文与音频处理完成 |
-| partial | 已有整理内容，但部分检索、核实或音频未完成；查看 warnings |
-| failed | 未完成正文整理；原日报仍可阅读，查看 warnings |
+| processing | 正在生成原文朗读音频 |
+| completed | 音频已完整保存并可播放 |
+| partial | 旧版历史状态；新版不会产生，播放仍以 audio.status 为准 |
+| failed | 语音未能完成；原日报仍可阅读，查看 warnings |
 
 `audioStatus` 为 `not_requested`（尚未点击）、`pending`、`ready` 或 `failed`。公开详情接口中对应字段是 `report.audio.status`，只有 `ready` 才能播放。客户端必须按这些明确字段展示，不从 body、URL 或来源数量推断成功。
 
 - `GET /api/news?page=1`：`{schemaVersion:1,status:"completed",items,page,hasMore}`，每页 20 条。
 - `GET /api/news/<id>`：`{schemaVersion:1,status:"completed",report}`；外层 completed 仅表示读取成功，处理结果在 `report.status`。
-- `POST /api/news/<id>/details`：无请求正文、页面同源调用，首次点击将 idle 报告原子排队，返回 `{schemaVersion:1,status:"completed",report}`。所有访客共享一次生成；queued/processing/completed/partial/failed 都返回现有记录，不再次排队。跨站请求拒绝，接口不能上传正文或新链接。POST 网络结果不明时先 GET 查询状态，不自动重发付费任务。
+- `POST /api/news/<id>/audio`：无请求正文、页面同源调用，首次点击将 idle 报告原子排队，返回 `{schemaVersion:1,status:"completed",report}`。所有访客共享一次生成；queued/processing/completed/partial/failed 都返回现有记录，不再次排队。跨站请求拒绝，接口不能上传正文或新链接。POST 网络结果不明时先 GET 查询状态，不自动重复生成。
+- `POST /api/news/<id>/details`：已停用，固定返回 HTTP 410、`NEWS_DETAILS_RETIRED`，不会产生任何任务。
 - `GET /api/news/<id>/audio`、`HEAD /api/news/<id>/audio`：同源 MP3，支持单段 Range、206/416，供微信内网页播放和拖动。未准备好不返回空音频。
 
-同一幂等键不重复建页、研究或推送；相同键不同内容返回 409。仅发送前初始化中断返回 `retryable: true` 时可沿用原键安全恢复；通知状态查询此时为 `initializing`。一旦进入发送阶段，中断后返回 unknown，不自动重发。后台阶段和调用预算单独恢复，不会因此再次发送微信。详情失败或部分完成后仍保留结果，当前页面不提供“重新生成”，防止重复消耗。
+同一幂等键不重复建页或推送；相同键不同内容返回 409。仅发送前初始化中断返回 `retryable: true` 时可沿用原键安全恢复；通知状态查询此时为 `initializing`。一旦进入发送阶段，中断后返回 unknown，不自动重发。语音任务独立恢复，不会因此再次发送微信。语音失败后仍保留原文，当前页面不提供“重新生成”，防止重复调用。
 
 ### 日报服务配置
 
@@ -183,14 +184,13 @@ curl --request POST 'https://yinlubin.cn/api/wechat/notify' \
 WECHAT_NEWS_ENABLED=true
 NEWS_REPORTS_DIR=/root/.txserver-news
 NEWS_PUBLIC_ORIGIN=https://yinlubin.cn
-NEWS_REPORT_MODEL=deepseek-flash
 WECHAT_NEWS_TTS_BIN=/root/.txserver-wechat/tts-venv/bin/edge-tts
 WECHAT_NEWS_TTS_VOICE=zh-CN-XiaoxiaoNeural
 ```
 
-`NEWS_REPORT_MODEL` 未设置时沿用 `DEEPSEEK_MODEL`，最终默认 deepseek-flash；`DEEPSEEK_API_KEY` 仅在服务端配置。旧 `WECHAT_NEWS_AUDIO_MODE` 与字体配置不再影响日报发送，不能用它们重新开启图片/MP3 推送。
+日报不再使用 `NEWS_REPORT_MODEL` 或 `DEEPSEEK_API_KEY`。DeepSeek 仍用于独立的微信聊天自动回复。旧 `WECHAT_NEWS_AUDIO_MODE` 与字体配置不影响日报发送，不能用它们重新开启图片/MP3 推送。
 
-正文、原文、来源和音频长期保存在独立磁盘目录，不放 Git。`reports/` 保存初始原文，`triggers/` 首次原子创建完整任务记录，后续研究更新此记录；读取优先使用触发记录，避免重复点击覆盖研究进度。任务结束清理临时抓取全文。每份研究从首次执行开始最多 5 分钟，搜索/读取预算在调用前落盘，重启不清零。单 worker 顺序处理；计划、正文、TTS 每阶段最多 2 次尝试仅用于中断恢复，正常失败不无限重试。
+原文和音频长期保存在独立磁盘目录，不放 Git。`reports/` 保存初始原文，`triggers/` 首次原子创建完整语音任务，后续由 worker 更新；读取优先使用触发记录，避免重复点击覆盖进度。单 worker 顺序处理，每份任务从首次执行开始最多 120 秒，单次 TTS 最多 90 秒；截止时间和调用次数在调用前落盘，重启不清零。最多 2 次尝试仅用于中断恢复，明确失败不会自动重试；音频完整保存后才发布 ready，恢复时校验本次音频摘要后直接复用。
 
 依赖沿用已安装的 `edge-tts==7.3.1`。新的 worker 入口如下（从旧入口升级时应替换 PM2 的启动参数，而不仅 restart）：
 
@@ -202,7 +202,7 @@ pm2 save
 pm2 logs wechat-news --lines 50 --nostream
 ```
 
-`GET /api/wechat/notify/status` 的 `newsWorker` 读取新目录 health.json 的状态和时间；旧时间戳不证明在线。研究进程使用服务器 `/usr/bin/flock` 对新目录 `worker.lock` 持有内核排他锁；进程退出后自动释放，不删除锁文件，不依赖 PID 文件恢复。不可启动两个研究 worker。停止 worker 不影响快讯直发，已有日报页面仍可阅读。关闭新日报接收需设 `WECHAT_NEWS_ENABLED=false` 并重启 txserver。
+`GET /api/wechat/notify/status` 的 `newsWorker` 读取新目录 health.json 的状态和时间；旧时间戳不证明在线。语音进程使用服务器 `/usr/bin/flock` 对新目录 `worker.lock` 持有内核排他锁；进程退出后自动释放，不删除锁文件，不依赖 PID 文件恢复。不可启动两个语音 worker。停止 worker 不影响快讯直发，已有日报页面仍可阅读。关闭新日报接收需设 `WECHAT_NEWS_ENABLED=false` 并重启 txserver。
 
 ## 连接状态
 
@@ -241,7 +241,7 @@ curl 'https://yinlubin.cn/api/wechat/notify/status' \
 - 同一机器人账号仅运行一个轮询程序，不与 cc-connect 或 Hermes 网关同时轮询。
 - 监听器用 `listener.lock` 防止重复启动。正常 SIGTERM 会释放；异常断电/SIGKILL 后，必须先确认锁里 PID 已退出，再删除旧锁并重启。
 - 目录权限 700、文件权限 600；密钥不进入文档、Git、URL 查询参数或日志。
-- `requests/` 保存请求摘要、状态及返回结果；普通通知不保存正文，日报原文和整理结果独立保存在 NEWS_REPORTS_DIR。不要在可能重试期间删除去重记录。
+- `requests/` 保存请求摘要、状态及返回结果；普通通知不保存正文，日报原文和音频独立保存在 NEWS_REPORTS_DIR。不要在可能重试期间删除去重记录。
 - 登录失效时需要重新绑定获取有效 botToken，更新配置并重启监听。该接口不是微信小程序 AppSecret 接口，二者凭证不能混用。
 
 部署时直接让 PM2 执行 Node，避免 PM2 的脚本包装器影响 ESM 入口判断：
@@ -302,15 +302,17 @@ pm2 restart wechat-notify
 
 停掉监听器不会关闭通知 HTTP 接口；接口仍可能使用已缓存的会话发送。仅关闭 AI 自动回复时，把 `.env.production.local` 的 `WECHAT_NOTIFY_AUTO_REPLY` 设为 `false`，然后重启 `wechat-notify`。
 
-`DEEPSEEK_MODEL` 由收支统计、微信自动回复共用；日报可用 `NEWS_REPORT_MODEL` 单独配置。修改后需要分别重启 `wechat-notify`、`wechat-news` 和 `txserver` 才能让所有服务加载新环境配置。
+`DEEPSEEK_MODEL` 由收支统计、微信自动回复共用，日报朗读不使用模型。修改模型配置后需重启 `wechat-notify` 和 `txserver`；修改语音配置则需重启 `wechat-news`。
 
 ## 数据与能力边界
 
-- 快讯、普通通知正文及微信入站聊天正文不写入本服务的文件或日志；明确标记的日报原文及整理结果公开归档。日报研究和自动回复会将相关文字提交给 DeepSeek，日报语音摘要再提交给在线语音服务。
+- 快讯、普通通知正文及微信入站聊天正文不写入本服务的文件或日志；明确标记的日报原文公开归档。只有聊天自动回复将消息提交给 DeepSeek；日报点击生成语音后，将原文朗读稿提交给在线语音服务。
 - 请求摘要、发送状态、微信会话凭证保存在服务器；停止进程不会删除这些文件。
-- 聊天自动回复不访问账单、不执行服务器命令、不控制其他应用，也没有联网工具。只有独立日报后台具备受限的搜索与网页读取能力。
+- 聊天自动回复不访问账单、不执行服务器命令、不控制其他应用，也没有联网工具。日报后台只处理原文 TTS，不具备搜索或网页读取能力。
 - 日报推送与 AI 自动回复分别限流。接口限流、微信上游限制、模型调用失败是不同情况，应按返回状态或日志错误码处理。
 
 ## 验证记录
 
 2026-11-12：38 项相关测试、定向 lint、类型检查与生产构建通过；公网未授权请求返回 401。用户已确认收到通知测试文字，也确认收到“你好”的 AI 自动回复。接管后 cc-connect 已停止，Hermes 网页服务保持独立运行。
+
+2026-11-12 日报简化：移除搜索和模型整理，改为原文＋按需语音；本地相关测试 115 项，113 通过、2 项 Linux 锁集成测试在 macOS 跳过，定向 lint、类型检查与生产构建通过。覆盖快讯直发、日报幂等、无点击不生成、重复点击复用、TTS 失败与中断恢复、音频 Range 和旧详情接口停用。

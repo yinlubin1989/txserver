@@ -13,8 +13,9 @@ function readReportResponse(value: unknown, id: string): NewsReport {
   if (payload.schemaVersion !== 1 || payload.status !== "completed" || !report || report.schemaVersion !== 1 ||
     report.id !== id || !statuses.has(report.status) || !audioStatuses.has(report.audio?.status) ||
     typeof report.title !== "string" || typeof report.original?.content !== "string" ||
-    !Array.isArray(report.sources) || !Array.isArray(report.warnings) ||
-    !(report.body === null || (Array.isArray(report.body?.highlights) && Array.isArray(report.body?.sections)))) {
+    !(report.audio.text === null || typeof report.audio.text === "string") ||
+    !(report.audio.url === null || typeof report.audio.url === "string") ||
+    (report.audio.status === "ready" && !report.audio.url)) {
     throw new Error("日报接口返回了无效数据。");
   }
   return report;
@@ -30,7 +31,7 @@ export function useReport(initialReport: NewsReport) {
   const [report, setReport] = useState(initialReport);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
-  const [isRequestingDetails, setIsRequestingDetails] = useState(false);
+  const [isRequestingAudio, setIsRequestingAudio] = useState(false);
   const requestController = useRef<AbortController | null>(null);
   const isMounted = useRef(true);
 
@@ -60,20 +61,20 @@ export function useReport(initialReport: NewsReport) {
     return () => { disposed = true; controller.abort(); clearTimeout(nextPoll); };
   }, [report.id, report.status, retry]);
 
-  async function requestDetails() {
+  async function requestAudio() {
     if (report.status !== "idle" || requestController.current) return;
     const controller = new AbortController();
     requestController.current = controller;
-    setIsRequestingDetails(true);
+    setIsRequestingAudio(true);
     setError("");
     const timeout = setTimeout(() => controller.abort(), 15000);
     try {
-      const response = await fetch(`/api/news/${report.id}/details`, { method: "POST", signal: controller.signal });
-      if (!response.ok) throw new Error("详情请求暂未确认。");
+      const response = await fetch(`/api/news/${report.id}/audio`, { method: "POST", signal: controller.signal });
+      if (!response.ok) throw new Error("语音请求暂未确认。");
       const updated = readReportResponse(await response.json(), report.id);
       if (!isMounted.current) return;
       setReport(updated);
-      if (updated.status === "idle") setError("尚未开始拉取详情，可以再次点击按钮。");
+      if (updated.status === "idle") setError("尚未开始生成语音，可以再次点击按钮。");
     } catch {
       if (!isMounted.current) return;
       // An uncertain POST is reconciled with one read; never automatically repeat a paid request.
@@ -84,14 +85,14 @@ export function useReport(initialReport: NewsReport) {
         const updated = await readLatestReport(report.id, checkController.signal);
         if (!isMounted.current) return;
         setReport(updated);
-        setError(updated.status === "idle" ? "尚未确认详情请求，可以再次点击拉取详情。" : "");
+        setError(updated.status === "idle" ? "尚未确认语音请求，可以再次点击生成语音。" : "");
       } catch {
-        if (isMounted.current) setError("请求结果尚未确认，请刷新状态查看。不会自动重复拉取。");
+        if (isMounted.current) setError("请求结果尚未确认，请刷新状态查看。不会自动重复生成。");
       } finally { clearTimeout(checkTimeout); }
     } finally {
       clearTimeout(timeout);
       requestController.current = null;
-      if (isMounted.current) setIsRequestingDetails(false);
+      if (isMounted.current) setIsRequestingAudio(false);
     }
   }
 
@@ -110,5 +111,5 @@ export function useReport(initialReport: NewsReport) {
     } finally { clearTimeout(timeout); requestController.current = null; }
   }
 
-  return { report, error, isRequestingDetails, requestDetails, retry: refreshStatus };
+  return { report, error, isRequestingAudio, requestAudio, retry: refreshStatus };
 }

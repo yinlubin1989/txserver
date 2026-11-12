@@ -5,56 +5,23 @@
 .header h1 { margin: 22px 0 16px; font-size: clamp(28px, 5vw, 40px); font-weight: 600; line-height: 1.45; letter-spacing: -0.035em; overflow-wrap: anywhere; text-wrap: balance; }
 .updated { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; color: #888; font-size: 11px; font-variant-numeric: tabular-nums; }
 .updated > span { color: #aaa; }
-.detailsAction { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 28px; }
-.detailsAction button { display: inline-flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 25px; padding: 10px 17px; border: 1px solid #171717; background: #fff; color: #171717; font-size: 13px; cursor: pointer; }
-.detailsAction button:hover:enabled { background: #f5f5f5; }
-.detailsAction button:disabled { border-color: #d5d5d5; color: #888; cursor: default; }
-.detailsAction p { margin: 0; color: #888; font-size: 12px; line-height: 1.8; }
-.audioStatus { display: flex; justify-content: space-between; gap: 16px; padding: 23px 0; border-top: 1px solid #171717; border-bottom: 1px solid #dedede; font-size: 14px; }
-.audioStatus > span:last-child { color: #888; font-size: 12px; }
-.progress { display: flex; align-items: flex-start; gap: 10px; margin: 23px 0 0; color: #555; font-size: 13px; }
-.progressDot { flex: 0 0 5px; height: 5px; margin-top: 7px; border-radius: 50%; background: #666; animation: breathe 1.6s ease-in-out infinite; }
-.notice { padding: 16px 18px; margin-top: 24px; border-left: 2px solid #aaa; background: #f8f8f8; color: #666; font-size: 12px; line-height: 1.8; }
+.audioAction { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 28px; }
+.audioAction button { display: inline-flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 25px; padding: 10px 17px; border: 1px solid #171717; background: #fff; color: #171717; font-size: 13px; cursor: pointer; }
+.audioAction button:hover:enabled { background: #f5f5f5; }
+.audioAction button:disabled { border-color: #d5d5d5; color: #888; cursor: default; }
+.audioAction p { margin: 0; color: #888; font-size: 12px; line-height: 1.8; }
+.notice { margin: 0 0 24px; color: #777; font-size: 12px; line-height: 1.8; }
 .notice p { margin: 0; }
-.notice .noticeTitle { margin-bottom: 5px; color: #333; font-weight: 500; }
-.notice ul { margin: 0; padding-left: 16px; }
 .notice button { min-height: 36px; padding: 5px 0; background: none; border: 0; color: #171717; cursor: pointer; font-size: 12px; }
-.intro { margin: 31px 0; color: #555; font-size: 15px; line-height: 1.95; overflow-wrap: anywhere; }
-.highlights { margin: 32px 0 36px; padding: 23px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.highlightsTitle { display: flex; align-items: baseline; gap: 14px; margin: 0 0 19px; font-size: 15px; font-weight: 600; }
-.highlightsTitle > span { color: #999; font-size: 9px; font-weight: 400; letter-spacing: 0.13em; }
-.highlights ol { padding: 0; margin: 0; list-style: none; }
-.highlights li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; margin-top: 14px; }
-.bullet { padding-top: 5px; color: #aaa; font-size: 10px; font-variant-numeric: tabular-nums; }
-.highlights li p { margin: 0; color: #3f3f3f; font-size: 14px; line-height: 1.9; overflow-wrap: anywhere; }
-.section { padding: 0 0 15px; margin-top: 35px; }
-.sectionTitle { display: flex; align-items: baseline; gap: 12px; margin: 0 0 19px; font-size: 23px; font-weight: 600; line-height: 1.5; letter-spacing: -0.02em; }
-.sectionTitle > span { flex: 0 0 22px; color: #aaa; font-size: 10px; font-weight: 400; font-variant-numeric: tabular-nums; letter-spacing: 0; }
-.paragraph { margin: 0 0 17px; color: #333; font-size: 16px; line-height: 2; overflow-wrap: anywhere; }
-.kind { display: inline-block; margin-right: 8px; padding: 0 5px; border: 1px solid #ddd; color: #777; font-size: 10px; line-height: 1.8; vertical-align: 2px; }
-.citation { margin-left: 3px; color: #777; font-size: 10px; line-height: 0; }
-.citation a { padding: 4px 1px; text-decoration: none; }
-.citation a:hover { color: #111; text-decoration: underline; }
-.sources { margin-top: 28px; padding-top: 24px; border-top: 1px solid #171717; }
-.sources h2, .original h2 { display: flex; align-items: baseline; gap: 14px; margin: 0 0 21px; font-size: 16px; font-weight: 550; }
-.sources h2 > span, .original h2 > span { color: #999; font-size: 9px; font-weight: 400; letter-spacing: 0.12em; }
-.sources ol { padding: 0; margin: 0; list-style: none; }
-.sources li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; padding: 12px 0; scroll-margin-top: 24px; }
-.sourceIndex { color: #aaa; font-size: 10px; padding-top: 3px; font-variant-numeric: tabular-nums; }
-.sources li > div { font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
-.sources a { color: #444; text-decoration: underline; text-decoration-color: #ccc; text-underline-offset: 4px; }
-.sources a:hover { color: #111; text-decoration-color: #111; }
-.sources li p { display: flex; flex-wrap: wrap; gap: 12px; margin: 5px 0 0; color: #999; font-size: 10px; }
 .original { padding-top: 26px; margin-top: 30px; border-top: 1px solid var(--line); }
+.original h2 { display: flex; align-items: baseline; gap: 14px; margin: 0 0 21px; font-size: 16px; font-weight: 550; }
+.original h2 > span { color: #999; font-size: 9px; font-weight: 400; letter-spacing: 0.12em; }
 .originalTime { margin: -7px 0 18px; color: #999; font-size: 11px; }
-.originalContent { color: #666; font-size: 14px; line-height: 1.95; white-space: pre-wrap; overflow-wrap: anywhere; }
+.originalContent { color: #444; font-size: 15px; line-height: 2; white-space: pre-wrap; overflow-wrap: anywhere; }
 .endmark { margin: 45px 0 0; color: #aaa; font-size: 9px; text-align: center; letter-spacing: 0.18em; }
-@keyframes breathe { 50% { opacity: 0.3; } }
 @media (max-width: 600px) {
   .report { padding-top: 28px; }
   .kicker { font-size: 9px; letter-spacing: 0.08em; }
   .header { padding-bottom: 23px; }
   .header h1 { margin-top: 20px; }
-  .sectionTitle { font-size: 21px; }
-  .paragraph { font-size: 15px; line-height: 2; }
 }
