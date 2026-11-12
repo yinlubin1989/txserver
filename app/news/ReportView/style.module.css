@@ -5,12 +5,15 @@
 .header h1 { margin: 22px 0 16px; font-size: clamp(28px, 5vw, 40px); font-weight: 600; line-height: 1.45; letter-spacing: -0.035em; overflow-wrap: anywhere; text-wrap: balance; }
 .updated { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; color: #888; font-size: 11px; font-variant-numeric: tabular-nums; }
 .updated > span { color: #aaa; }
+.detailsAction { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 28px; }
+.detailsAction button { display: inline-flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 25px; padding: 10px 17px; border: 1px solid #171717; background: #fff; color: #171717; font-size: 13px; cursor: pointer; }
+.detailsAction button:hover:enabled { background: #f5f5f5; }
+.detailsAction button:disabled { border-color: #d5d5d5; color: #888; cursor: default; }
+.detailsAction p { margin: 0; color: #888; font-size: 12px; line-height: 1.8; }
 .audioStatus { display: flex; justify-content: space-between; gap: 16px; padding: 23px 0; border-top: 1px solid #171717; border-bottom: 1px solid #dedede; font-size: 14px; }
 .audioStatus > span:last-child { color: #888; font-size: 12px; }
-.progress { display: flex; align-items: flex-start; gap: 10px; padding: 23px 0 0; }
+.progress { display: flex; align-items: flex-start; gap: 10px; margin: 23px 0 0; color: #555; font-size: 13px; }
 .progressDot { flex: 0 0 5px; height: 5px; margin-top: 7px; border-radius: 50%; background: #666; animation: breathe 1.6s ease-in-out infinite; }
-.progress p { margin: 0; color: #555; font-size: 13px; }
-.progress p > span { display: block; margin-top: 5px; color: #888; font-size: 12px; line-height: 1.7; }
 .notice { padding: 16px 18px; margin-top: 24px; border-left: 2px solid #aaa; background: #f8f8f8; color: #666; font-size: 12px; line-height: 1.8; }
 .notice p { margin: 0; }
 .notice .noticeTitle { margin-bottom: 5px; color: #333; font-weight: 500; }

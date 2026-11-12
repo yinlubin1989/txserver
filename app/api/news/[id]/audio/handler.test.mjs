@@ -13,7 +13,7 @@ async function fixture(t, ready = true) {
   t.after(() => rm(directory, { recursive: true, force: true }));
   const report = await createReport({ id, notification: { title: '日报', content: '测试原文' }, reportDate: '2026-11-12' }, { directory });
   await saveAudio(id, mp3, { directory });
-  if (ready) await writeReport({ ...report, audio: { status: 'ready', url: `/api/news/${id}/audio` } }, { directory });
+  if (ready) await writeReport({ ...report, status: 'processing', audio: { status: 'ready', url: `/api/news/${id}/audio` } }, { directory });
   return { directory };
 }
 function request(method = 'GET', range) {

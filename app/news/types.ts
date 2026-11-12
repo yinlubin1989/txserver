@@ -1,5 +1,5 @@
-export type ReportStatus = "queued" | "processing" | "completed" | "partial" | "failed";
-export type AudioStatus = "pending" | "ready" | "failed";
+export type ReportStatus = "idle" | "queued" | "processing" | "completed" | "partial" | "failed";
+export type AudioStatus = "not_requested" | "pending" | "ready" | "failed";
 
 export interface ReportText {
   text: string;
@@ -40,7 +40,7 @@ export interface ReportListItem {
 }
 
 export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
-  queued: "等待补充", processing: "正在补充", completed: "精读版", partial: "部分完成", failed: "补充未完成",
+  idle: "原始简报", queued: "等待补充", processing: "正在补充", completed: "精读版", partial: "部分完成", failed: "补充未完成",
 };
 
 export function isProcessing(status: ReportStatus) {
