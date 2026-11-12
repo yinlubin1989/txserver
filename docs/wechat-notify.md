@@ -56,7 +56,7 @@ curl --request POST 'https://yinlubin.cn/api/wechat/notify' \
 
 同一 Idempotency-Key 和相同规范化内容重试时返回已存结果，`deduplicated: true`，不再发送。不同内容复用编号返回 409。未传此请求头时每次请求均作为新消息，无法避免调用方重试造成的重复。
 
-失败返回 `{ schemaVersion: 1, status: "failed" | "unknown", code, error, requestId? }`。网络超时、断线及无法确认的响应使用 `unknown`，可能已发送，**不要自动换新编号重发**，应先核对微信。
+失败返回 `{ schemaVersion: 1, status: "failed" | "unknown", code, error, requestId? }`。微信明确拒绝时还可能包含数值 `upstreamRet`、`upstreamErrcode`，用于排查；不返回原始响应或凭证。网络超时、断线及无法确认的响应使用 `unknown`，可能已发送，**不要自动换新编号重发**，应先核对微信。
 
 | HTTP | 情况 | 处理 |
 | --- | --- | --- |
