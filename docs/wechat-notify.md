@@ -40,19 +40,21 @@ curl --request POST 'https://yinlubin.cn/api/wechat/notify' \
 
 ## 返回契约
 
-微信接口明确返回 `ret: 0` 才返回 HTTP **202**：
+HTTP **202** 包含两种明确区分的状态。微信接口明确返回 `ret: 0` 时为 `accepted`：
 
 ```json
 {
   "schemaVersion": 1,
   "status": "accepted",
   "requestId": "请求编号摘要",
-  "acceptedAt": "2026-11-12T01:00:00.000Z",
+  "submittedAt": "2026-11-12T01:00:00.000Z",
   "deduplicated": false
 }
 ```
 
-`accepted` 表示微信上游已接受，不代表手机已读或已确认送达。不能仅根据 HTTP 200、message_id 等其他字段推断成功。
+`accepted` 表示微信上游已接受，不代表手机已读或已确认送达。不能仅根据 HTTP 200、message_id 等其他字段推断业务成功。
+
+微信官方客户端还接受 HTTP 成功 + 空对象 `{}` 的响应。对此本接口返回 HTTP **202**、`status: "submitted"`、`deliveryStatus: "unknown"`、`acknowledgement: "missing_business_status"`，含义仅为请求已提交，微信没有提供业务确认。它不等于 `accepted` 或已送达；调用方应标记“已提交，送达未确认”，**不要自动重发**。同样会保存请求编号防止重复发送。参考[腾讯官方成功测试](https://github.com/Tencent/openclaw-weixin/blob/main/src/api/api.test.ts)。
 
 同一 Idempotency-Key 和相同规范化内容重试时返回已存结果，`deduplicated: true`，不再发送。不同内容复用编号返回 409。未传此请求头时每次请求均作为新消息，无法避免调用方重试造成的重复。
 
