@@ -4,7 +4,7 @@
 
 ## 用途
 
-外部应用通过公网 HTTPS POST，将日报、资讯或提醒发送到站长预先绑定的微信机器人会话。txserver 直接调用腾讯 iLink HTTP 接口，不经过 cc-connect 或 Hermes。普通通知不经过大模型；`grokbot` 新闻额外通过 DeepSeek 生成语音摘要。调用方不能指定任意接收人。
+外部应用通过公网 HTTPS POST，将日报、资讯或提醒发送到站长预先绑定的微信机器人会话。txserver 直接调用腾讯 iLink HTTP 接口，不经过 cc-connect 或 Hermes。普通通知不经过大模型；`grokbot` 新闻仅在明确启用 `file` 模式时通过 DeepSeek 生成音频摘要，默认只发送图文。调用方不能指定任意接收人。
 
 ## 快速上手
 
@@ -110,6 +110,8 @@ curl --request POST 'https://yinlubin.cn/api/wechat/notify' \
 
 ## grokbot 新闻：阅读图、完整文字和语音摘要
 
+**当前线上状态（2026-11-12）：图文已验证可收取。用户要求微信原生语音气泡，MP3 附件已停用。现有 iLink 通道尚无已验证的原生语音发送方案，语音部分明确返回 `NEWS_NATIVE_VOICE_UNAVAILABLE`，不会用文件附件冒充语音完成。** 参考：[腾讯当前媒体发送代码](https://github.com/Tencent/openclaw-weixin/blob/main/src/messaging/send-media.ts)、[尚未解决的原生语音投递问题](https://github.com/Tencent/openclaw-weixin/issues/91)。
+
 两种标识方式均可：设置 `source: "grokbot"`（推荐），或让标题以 `【grokbot】` 开头。来源字段不区分大小写；来源与标题标记冲突会返回 400。旧的四字段请求继续兼容。其他 source 仍按普通文字通知处理。
 
 ```json
@@ -122,7 +124,7 @@ curl --request POST 'https://yinlubin.cn/api/wechat/notify' \
 }
 ```
 
-服务端依次发送：白底排版阅读图、完整文字与链接、一条中文 MP3 摘要。语音通常约 20–40 秒，素材短时更短；摘要只依据推送内容，不自行补充新闻。**音频是可打开播放的 MP3 附件，不是微信原生语音条**，原生语音条目前没有可验证的发送支持。图片超出排版范围或语音生成失败时仍尽量发送文字，状态会明确标记部分失败。
+服务端目前发送白底排版阅读图、完整文字与链接。另保留明确选择 `file` 模式时的 MP3 摘要能力，默认不启用；这种摘要通常约 20–40 秒，素材短时更短，只依据推送内容，不自行补充新闻。**MP3 附件不是微信原生语音条**。图片超出排版范围或语音不可用时仍尽量发送文字，状态会明确标记部分失败。
 
 新闻采用持久队列，POST 立即返回 HTTP 202，表示已排队，**不表示已经发到微信**：
 
@@ -149,7 +151,7 @@ curl --request POST 'https://yinlubin.cn/api/wechat/notify' \
 | unknown | 至少一次发送结果未知，或处理被中断；勿自动重发 |
 | failed | 未成功完成这组发送；查看 code 或 parts |
 
-终态的 `parts.image`、`parts.text`、`parts.audio` 分别提供 `status` 与可选 `code`。单部分状态为 `accepted`、`submitted`、`failed` 或 `unknown`；处理中还可出现 `not_started`、`sending`。被中断且未尝试的部分保留 `not_started`。`submitted` 带 `deliveryStatus: "unknown"`。生成失败不会伪造空白图或静音文件。
+终态的 `parts.image`、`parts.text`、`parts.audio` 分别提供 `status` 与可选 `code`。单部分状态为 `accepted`、`submitted`、`failed` 或 `unknown`；处理中还可出现 `not_started`、`sending`。被中断且未尝试的部分保留 `not_started`。`submitted` 带 `deliveryStatus: "unknown"`。生成失败不会伪造空白图或静音文件。当前默认 `native` 模式的语音部分明确失败，因此整体不会返回 `accepted` 或 `submitted`；只有启用 `file` 模式后三部分均完成提交才可能达到这两个状态。
 
 同一 Idempotency-Key 重试只查询已有结果。POST 重试沿用已保存的 HTTP 状态：排队/处理/accepted/submitted 为 202，partial 为 207，failed/unknown 为 502；GET 查询成功统一 200，均须读取业务 status。已部分发出的新闻不会自动重放；如需补发，应先核实微信实际收到的内容，避免重复。排队超过 24 小时的新闻作废，不发送过期内容。服务重启会继续尚未开始的任务；处理中断的任务标为 unknown，由人工核对。
 
@@ -159,9 +161,10 @@ curl --request POST 'https://yinlubin.cn/api/wechat/notify' \
 WECHAT_NEWS_ENABLED=true
 WECHAT_NEWS_FONT_PATH=/root/.txserver-wechat/fonts/NotoSansCJKsc-Regular.otf
 WECHAT_NEWS_TTS_BIN=/root/.txserver-wechat/tts-venv/bin/edge-tts
+WECHAT_NEWS_AUDIO_MODE=native
 ```
 
-语音摘要使用现有 DeepSeek 配置；播音使用 edge-tts 的中文音色，摘要会提交给 Microsoft Edge 在线语音服务。可通过 `WECHAT_NEWS_TTS_VOICE` 调整音色，默认 `zh-CN-XiaoxiaoNeural`。语音服务超时或失败会明确记录，不自动更换供应商。
+`native` 为默认模式，表示用户要求原生语音；目前未接通，因此不生成或发送 MP3，只返回不可用状态。只有用户明确接受文件形式后，才可改为 `file` 并重启 `wechat-news`。`file` 模式的语音摘要使用现有 DeepSeek 配置；播音使用 edge-tts 的中文音色，摘要会提交给 Microsoft Edge 在线语音服务。可通过 `WECHAT_NEWS_TTS_VOICE` 调整音色，默认 `zh-CN-XiaoxiaoNeural`。语音服务超时或失败会明确记录，不自动更换供应商。
 
 语音依赖固定为 `edge-tts==7.3.1`，安装在独立 Python 虚拟环境，避免影响其他应用：`/root/.txserver-wechat/tts-venv/bin/pip install edge-tts==7.3.1`。来源：[edge-tts 官方仓库](https://github.com/rany2/edge-tts)。
 
