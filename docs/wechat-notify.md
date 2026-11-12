@@ -26,8 +26,10 @@ Method: POST
 Content-Type: application/json
 Authorization: Bearer <单独填写接口密钥>
 Idempotency-Key: <每条通知唯一且重试不变的编号>
-Body: {"title":"标题","content":"正文","type":"日报","time":"展示时间"}
+Body: {"source":"grokbot","type":"daily","title":"【grokbot】每日简报","content":"正文","time":"展示时间"}
 ```
+
+需要网页链接的日报必须使用 `source: "grokbot"` 和 `type: "daily"`；测试日报也用 `daily`，只在标题注明“测试”。`type: "日报"`、`"test"`、`"news"` 或省略类型都会作为普通文字通知，不自动附网页链接。快讯继续使用 `type: "news"`，直接转发原文。
 
 接口密钥使用 `WECHAT_NOTIFY_API_KEY`，不是 DeepSeek Key、微信 AppSecret 或微信机器人 botToken。站长可从服务器 `/root/.txserver-wechat/client.env`，或本机 txserver 项目内 `.env.wechat-notify-client.local` 获取。对方应用有加密输入框时，把密钥填在那里；本文档只提供字段与配置位置。
 
@@ -45,9 +47,10 @@ Body: {"title":"标题","content":"正文","type":"日报","time":"展示时间"
 
 ```json
 {
-  "title": "今日资讯",
+  "source": "grokbot",
+  "title": "【grokbot】每日简报",
   "content": "这里是需要发送到微信的正文。",
-  "type": "日报",
+  "type": "daily",
   "time": "2026-11-12 09:00:00"
 }
 ```
@@ -70,7 +73,7 @@ curl --request POST 'https://yinlubin.cn/api/wechat/notify' \
   --header "Authorization: Bearer $WECHAT_NOTIFY_API_KEY" \
   --header 'Content-Type: application/json' \
   --header 'Idempotency-Key: news-2026-11-12-morning' \
-  --data '{"title":"今日资讯","content":"这里是正文","type":"日报","time":"2026-11-12 09:00:00"}'
+  --data '{"source":"grokbot","title":"【grokbot】每日简报","content":"这里是正文","type":"daily","time":"2026-11-12 09:00:00"}'
 ```
 
 ## 返回契约
