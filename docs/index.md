@@ -6,6 +6,7 @@
 |------|------|------|
 | frps | frp 内网穿透服务端 | [frps 文档](/docs/frp.html) |
 | txserver | Next.js 主站服务 | - |
+| 微信通知与 AI 回复 | 外部应用推送微信、DeepSeek 文字回复 | [使用与接口文档](/docs/wechat-notify.html) |
 | AI Passport 对讲 | 跨地 Wi-Fi 对讲中继与使用统计 | [中继与后台管理](/docs/ai-passport-intercom.html) |
 | Hermes Studio | Hermes Agent Web 管理界面 | [打开 Hermes Studio](http://82.157.107.78:8648/) |
 | Mihomo 代理 | Clash Meta 代理服务（订阅/节点管理） | [使用文档](/docs/mihomo-proxy.html) |
@@ -21,6 +22,8 @@
 - [Mihomo 代理服务使用文档](mihomo-proxy.md) — 订阅管理、节点切换与代理出口
 
 - [小程序微信身份与账本恢复](wechat-ledger.html) — 微信配置、旧账单迁移、公开与私有说明
+
+- [微信通知使用与接口文档](wechat-notify.html) — 接入地址、鉴权、请求示例、自动回复和故障排查
 
 ## 服务器信息
 
