@@ -2,6 +2,18 @@
 
 更新日期：2026-11-13。通知发送和 DeepSeek 自动回复均已由手机实收验证。
 
+<h2 id="notify-api-key">微信推送密钥</h2>
+
+应用里只需要填 Token / API Key 时，复制下面这一整段：
+
+<pre><code data-wechat-notify-key>正在读取接口密钥…</code></pre>
+
+需要完整请求头时，复制这一项：
+
+<pre><code data-wechat-notify-header>正在读取 Authorization 请求头…</code></pre>
+
+这是当前微信推送接口的 `WECHAT_NOTIFY_API_KEY`，不是 DeepSeek Key 或微信 AppSecret。
+
 ## 用途
 
 外部应用通过公网 HTTPS POST，将日报、资讯或提醒发送到站长预先绑定的微信机器人会话。txserver 直接调用腾讯 iLink HTTP 接口，不经过 cc-connect 或 Hermes。快讯和普通通知直接转发文字，不经过大模型。只有明确标记的 grokbot 日报生成公开网页，网页保留原始简报；收到日报后后台自动生成原文朗读，无需打开网页或点击生成，不搜索资料，也不调用模型改写或总结。调用方不能指定任意接收人。
@@ -31,23 +43,11 @@ Body: {"source":"grokbot","type":"daily","title":"【grokbot】每日简报","co
 
 需要网页链接的日报必须使用 `source: "grokbot"` 和 `type: "daily"`；测试日报也用 `daily`，只在标题注明“测试”。`type: "日报"`、`"test"`、`"news"` 或省略类型都会作为普通文字通知，不自动附网页链接。快讯继续使用 `type: "news"`，直接转发原文。
 
-接口密钥使用 `WECHAT_NOTIFY_API_KEY`，可从下方直接复制。它只用于微信通知接口，不是 DeepSeek Key、微信 AppSecret 或微信机器人 botToken。
+接口密钥使用 `WECHAT_NOTIFY_API_KEY`，可在[文档顶部的微信推送密钥](#notify-api-key)直接复制。它只用于微信通知接口，不是 DeepSeek Key、微信 AppSecret 或微信机器人 botToken。
 
 每天的日报使用新的编号，例如 `daily-2026-11-12`；同一条日报网络重试时沿用原编号。`time` 只是显示文字，定时发送需要调用方自行安排。
 
 收到 `accepted` 或 `submitted` 后，不要为确认手机收取而再次生成新编号发送。状态含义见下文。
-
-### 接口密钥
-
-仅需填写 Token 的应用，复制这一项：
-
-<pre><code data-wechat-notify-key>正在读取接口密钥…</code></pre>
-
-需要完整请求头时，复制这一项：
-
-<pre><code data-wechat-notify-header>正在读取 Authorization 请求头…</code></pre>
-
-以上明文从服务器当前配置生成的本地文件读取，不写入文档源码或 Git。密钥更新后，需同步服务器上的文档凭证文件。
 
 ## 调用
 

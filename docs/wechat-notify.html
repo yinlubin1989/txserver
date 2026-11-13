@@ -67,14 +67,17 @@ async function loadNotifyCredentials() {
   }
 }
 
-fetch('/docs/' + file)
+fetch('/docs/' + file, { cache: 'no-store' })
   .then(response => {
     if (!response.ok) throw new Error('Document unavailable');
     return response.text();
   })
-  .then(md => {
+  .then(async md => {
     document.getElementById('content').innerHTML = marked.parse(md);
-    return loadNotifyCredentials();
+    await loadNotifyCredentials();
+    if (location.hash === '#notify-api-key') {
+      document.getElementById('notify-api-key')?.scrollIntoView();
+    }
   })
   .catch(() => { document.getElementById('content').innerHTML = '<p>文档加载失败</p>'; });
 </script>
