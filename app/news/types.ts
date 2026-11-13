@@ -10,7 +10,7 @@ export interface NewsReport {
   schemaVersion: 1;
   id: string;
   title: string;
-  source: "grokbot";
+  source: string;
   reportDate: string;
   createdAt: string;
   updatedAt: string;
@@ -30,7 +30,7 @@ export interface NewsReport {
 export interface ReportListItem {
   id: string;
   title: string;
-  source: "grokbot";
+  source: string;
   reportDate: string;
   createdAt: string;
   updatedAt: string;

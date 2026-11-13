@@ -19,7 +19,7 @@ export default async function NewsPage({ searchParams }: { searchParams: Promise
     <PageShell width="reading">
       <BackLink />
       <header className={styles.header}>
-        <p className={styles.eyebrow}>GROKBOT / DAILY BRIEF</p>
+        <p className={styles.eyebrow}>DAILY BRIEF</p>
         <div className={styles.heading}><h1>日报</h1><span>按日留存，随时读听。</span></div>
       </header>
       {items.length ? (

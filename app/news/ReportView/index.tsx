@@ -10,7 +10,7 @@ export function ReportView({ initialReport }: { initialReport: NewsReport }) {
 
   return <article className={styles.report}>
     <header className={styles.header}>
-      <div className={styles.kicker}><span>GROKBOT / DAILY BRIEF</span><time dateTime={report.reportDate}>{formatReportDate(report.reportDate)}</time></div>
+      <div className={styles.kicker}><span>{report.source === "external" ? "DAILY BRIEF" : report.source}</span><time dateTime={report.reportDate}>{formatReportDate(report.reportDate)}</time></div>
       <h1>{report.title}</h1>
       <p className={styles.updated}>收录于 {formatReportTime(report.createdAt)}<span>北京时间</span></p>
     </header>

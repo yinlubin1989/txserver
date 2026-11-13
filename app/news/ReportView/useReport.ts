@@ -12,6 +12,7 @@ function readReportResponse(value: unknown, id: string): NewsReport {
   const report = payload.report;
   if (payload.schemaVersion !== 1 || payload.status !== "completed" || !report || report.schemaVersion !== 1 ||
     report.id !== id || !statuses.has(report.status) || !audioStatuses.has(report.audio?.status) ||
+    typeof report.source !== "string" || !/^[a-z0-9_-]{1,40}$/.test(report.source) ||
     typeof report.title !== "string" || typeof report.original?.content !== "string" ||
     !(report.audio.text === null || typeof report.audio.text === "string") ||
     !(report.audio.url === null || typeof report.audio.url === "string") ||
