@@ -37,9 +37,45 @@
 <script>
 const page = location.pathname.replace('/docs/', '') || 'index';
 const file = page.endsWith('.html') ? page.replace('.html', '.md') : page + '.md';
+
+async function loadNotifyCredentials() {
+  const keyElement = document.querySelector('[data-wechat-notify-key]');
+  const headerElement = document.querySelector('[data-wechat-notify-header]');
+  if (!keyElement || !headerElement) return;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch('/docs/wechat-notify-credentials.local.json', {
+      cache: 'no-store', credentials: 'same-origin', signal: controller.signal,
+    });
+    if (!response.ok) throw new Error('Credentials unavailable');
+    const credentials = await response.json();
+    if (!credentials || typeof credentials !== 'object' || Array.isArray(credentials) ||
+        credentials.schemaVersion !== 1 || credentials.status !== 'completed' ||
+        typeof credentials.apiKey !== 'string' || credentials.apiKey.length < 32 ||
+        /[\u0000-\u001f\u007f-\u009f]/.test(credentials.apiKey)) {
+      throw new Error('Invalid credentials response');
+    }
+    keyElement.textContent = credentials.apiKey;
+    headerElement.textContent = 'Authorization: Bearer ' + credentials.apiKey;
+  } catch {
+    keyElement.textContent = '未读取到接口密钥，请刷新页面重试。';
+    headerElement.textContent = '未读取到 Authorization 请求头，请刷新页面重试。';
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 fetch('/docs/' + file)
-  .then(r => r.text())
-  .then(md => { document.getElementById('content').innerHTML = marked.parse(md); })
+  .then(response => {
+    if (!response.ok) throw new Error('Document unavailable');
+    return response.text();
+  })
+  .then(md => {
+    document.getElementById('content').innerHTML = marked.parse(md);
+    return loadNotifyCredentials();
+  })
   .catch(() => { document.getElementById('content').innerHTML = '<p>文档加载失败</p>'; });
 </script>
 </body>

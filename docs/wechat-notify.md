@@ -1,6 +1,6 @@
 # 微信通知使用与接口文档
 
-更新日期：2026-11-12。通知发送和 DeepSeek 自动回复均已由手机实收验证。
+更新日期：2026-11-13。通知发送和 DeepSeek 自动回复均已由手机实收验证。
 
 ## 用途
 
@@ -31,11 +31,23 @@ Body: {"source":"grokbot","type":"daily","title":"【grokbot】每日简报","co
 
 需要网页链接的日报必须使用 `source: "grokbot"` 和 `type: "daily"`；测试日报也用 `daily`，只在标题注明“测试”。`type: "日报"`、`"test"`、`"news"` 或省略类型都会作为普通文字通知，不自动附网页链接。快讯继续使用 `type: "news"`，直接转发原文。
 
-接口密钥使用 `WECHAT_NOTIFY_API_KEY`，不是 DeepSeek Key、微信 AppSecret 或微信机器人 botToken。站长可从服务器 `/root/.txserver-wechat/client.env`，或本机 txserver 项目内 `.env.wechat-notify-client.local` 获取。对方应用有加密输入框时，把密钥填在那里；本文档只提供字段与配置位置。
+接口密钥使用 `WECHAT_NOTIFY_API_KEY`，可从下方直接复制。它只用于微信通知接口，不是 DeepSeek Key、微信 AppSecret 或微信机器人 botToken。
 
 每天的日报使用新的编号，例如 `daily-2026-11-12`；同一条日报网络重试时沿用原编号。`time` 只是显示文字，定时发送需要调用方自行安排。
 
 收到 `accepted` 或 `submitted` 后，不要为确认手机收取而再次生成新编号发送。状态含义见下文。
+
+### 接口密钥
+
+仅需填写 Token 的应用，复制这一项：
+
+<pre><code data-wechat-notify-key>正在读取接口密钥…</code></pre>
+
+需要完整请求头时，复制这一项：
+
+<pre><code data-wechat-notify-header>正在读取 Authorization 请求头…</code></pre>
+
+以上明文从服务器当前配置生成的本地文件读取，不写入文档源码或 Git。密钥更新后，需同步服务器上的文档凭证文件。
 
 ## 调用
 
@@ -243,7 +255,7 @@ curl 'https://yinlubin.cn/api/wechat/notify/status' \
 - `node lib/wechatNotify/listener.mjs`：独立后台监听。只保存固定接收人的会话凭证和游标，不持久化微信聊天正文。默认不自动回复；启用 `WECHAT_NOTIFY_AUTO_REPLY=true` 后，按下方规则调用 AI 回复。
 - 同一机器人账号仅运行一个轮询程序，不与 cc-connect 或 Hermes 网关同时轮询。
 - 监听器用 `listener.lock` 防止重复启动。正常 SIGTERM 会释放；异常断电/SIGKILL 后，必须先确认锁里 PID 已退出，再删除旧锁并重启。
-- 目录权限 700、文件权限 600；密钥不进入文档、Git、URL 查询参数或日志。
+- 机器人凭证目录权限 700、文件权限 600；凭证不进入 Git、URL 查询参数或日志。通知接口密钥通过服务器上的 `docs/wechat-notify-credentials.local.json` 在本文档明文展示，该文件已由 `docs/.gitignore` 排除，不提交到 Git。
 - `requests/` 保存请求摘要、状态及返回结果；普通通知不保存正文，日报原文和音频独立保存在 NEWS_REPORTS_DIR。不要在可能重试期间删除去重记录。
 - 登录失效时需要重新绑定获取有效 botToken，更新配置并重启监听。该接口不是微信小程序 AppSecret 接口，二者凭证不能混用。
 
