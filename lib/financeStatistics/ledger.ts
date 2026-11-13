@@ -89,7 +89,12 @@ function verifyCommissionReferences(items: Item[]) {
       const perUnit = [...normalized.matchAll(/(?:每\s*束\s*(?:提成)?\s*[:：]?\s*(-?\d+(?:\.\d+)?)|提成\s*[:：]?\s*(-?\d+(?:\.\d+)?)\s*元?\s*[\/／]\s*束)/gu)];
       if (!perUnit.some(match => cents(match[1] ?? match[2]) === cents(item.unitPrice!))) invalid('每束提成单价缺少原文明示，不能把总提成乘销量。');
       if (item.amount === null) verifyMissingAmount({ ...item, quantity: null, source: sourceTokens(item.source).replace(sourceTokens(sale.source), '') });
-    } else if (item.quantity !== null || item.quantityUnit !== null) invalid('总提成不应带有推算数量或单位。');
+    } else {
+      if (item.quantity !== null || item.quantityUnit !== null) invalid('总提成不应带有推算数量或单位。');
+      // Linked evidence contains the sale's numbers as well as the commission.
+      // Validate only the remaining fee text when its amount is genuinely blank.
+      if (sale && item.amount === null) verifyMissingAmount({ ...item, source: sourceTokens(item.source).replace(sourceTokens(sale.source), '') });
+    }
   }
 }
 function validate(raw: unknown, text: string): RecordEntry[] {
@@ -109,7 +114,7 @@ function validate(raw: unknown, text: string): RecordEntry[] {
       ids.add(item.id); source(item.source, record.source);
       for (const key of ['amount', 'unitPrice']) if (item[key] !== null) { cents(item[key] as string); verifyAmount(item[key] as string, item.source); }
       verifyQuantity(item.quantity, item.quantityUnit, item.source);
-      if (!(item.category === 'commission' && item.unitPrice !== null)) verifyMissingAmount(item as Item);
+      if (!(item.category === 'commission' && (item.unitPrice !== null || item.commissionFor !== null))) verifyMissingAmount(item as Item);
       if (item.commissionFor !== null && (item.category !== 'commission' || typeof item.commissionFor !== 'string')) invalid('提成关联销售字段不合法。');
       if (item.includedIn !== null && (typeof item.includedIn !== 'string' || item.includedIn === item.id)) invalid();
       if (item.includedIn !== null) { source(item.inclusionSource, record.source); verifyInclusion(item.inclusionSource, record.source); }
@@ -174,6 +179,7 @@ export function calculateLedger(raw: unknown, text: string) {
     days.set(record.day, [...(days.get(record.day) ?? []), { record, recordIndex }]);
   }
   const dailyRows: DailyRow[] = [];
+  const commissionReviewDays = new Set<number>();
   for (const [day, dayRecords] of days) {
     const date = `${records[0].month}月${day}日`;
     const entries: CalculatedEntry[] = [];
@@ -195,7 +201,11 @@ export function calculateLedger(raw: unknown, text: string) {
         entries.push({ recordIndex, item, detail });
       }
     }
-    const policy = applyCommissionPolicy(date, entries, dayRecords.map(entry => entry.record.source));
+    const policy = applyCommissionPolicy(entries, dayRecords.map(entry => entry.record.source));
+    if (policy.reviewWarning) {
+      commissionReviewDays.add(day);
+      warnings.push({ code: 'COMMISSION_INCOMPLETE', date, severity: 'review', message: `${date}${policy.reviewWarning}` });
+    }
     // Classify only after inclusion rules: a discrepancy in an excluded fee cannot change the total.
     for (const { item, detail } of policy.entries) {
       if (item.amount === null || item.unitPrice === null || item.quantity === null || detail.amountCents === cents(item.amount)) continue;
@@ -232,7 +242,7 @@ export function calculateLedger(raw: unknown, text: string) {
     ['incomplete', 'COMMISSION_INCOMPLETE', '天提成信息不完整，已按原文红包入账'],
     ['inferred', 'COMMISSION_INFERRED', '天未填写红包，已按默认规则和注明提成补算'],
   ] as const) {
-    const count = dailyRows.filter(row => row.commissionCheck?.status === status).length;
+    const count = dailyRows.filter(row => row.commissionCheck?.status === status && !commissionReviewDays.has(row.day)).length;
     if (count) warnings.push({ code, date: '', severity: 'info', message: `${count}${description}；请展开对应日期明细查看。` });
   }
   dailyRows.sort((a, b) => a.day - b.day);
