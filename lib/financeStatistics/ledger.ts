@@ -2,6 +2,7 @@ import { FinanceError } from './financeError';
 import { cents, safe, sum, money, multiply } from './money';
 import { incomeChecks, verifyIncomeTotalCoverage } from './incomeChecks';
 import { applyCommissionPolicy, type CalculatedEntry, type CommissionCheck } from './commissionPolicy';
+import { readQuantityEvidence } from './quantityEvidence';
 export { FinanceError } from './financeError';
 export { cents } from './money';
 export type Category = 'income' | 'commission' | 'redPacket' | 'purchase' | 'supplies' | 'other';
@@ -42,14 +43,7 @@ function verifyQuantity(quantity: unknown, unit: unknown, evidence: string) {
   if (unit !== null && (typeof unit !== 'string' || !/^[\p{L}]{1,12}$/u.test(unit) || !evidence.includes(unit))) invalid('数量单位缺少对应的原文依据。');
   if (quantity === null) return;
   if (typeof quantity !== 'number' || !Number.isSafeInteger(quantity) || quantity < 0) invalid('识别出的数量格式不合法。');
-  const normalized = evidence.normalize('NFKC');
-  const tokens = normalized.match(/-?\d+(?:\.\d+)?/g) ?? [];
-  if (!tokens.some(token => Number(token) === quantity)) invalid('数量缺少对应的原文数字。');
-  if (unit !== null) {
-    // Match the number attached to the stated unit, not a price elsewhere in the line.
-    const pattern = new RegExp(`(-?\\d+(?:\\.\\d+)?)\\s*${unit}(?![A-Za-z])`, 'gu');
-    if (![...normalized.matchAll(pattern)].some(match => Number(match[1]) === quantity)) invalid('数量与原文计量单位不对应。');
-  }
+  if (!readQuantityEvidence(evidence, unit as string | null).some(token => token.value === quantity)) invalid('数量与原文计量单位不对应。');
 }
 function verifyMissingAmount(item: Item) {
   if (item.amount !== null) return;
@@ -63,7 +57,11 @@ function verifyMissingAmount(item: Item) {
     remaining.splice(index, 1);
   };
   if (item.unitPrice !== null) consume(token => /^-?\d{1,12}(\.\d{1,2})?$/.test(token) && cents(token) === cents(item.unitPrice!));
-  if (item.quantity !== null) consume(token => Number(token) === item.quantity);
+  if (item.quantity !== null) {
+    const quantity = readQuantityEvidence(item.source, item.quantityUnit).find(token => token.value === item.quantity);
+    // Chinese counts occupy their own token; do not join “288一束” into “2881束”.
+    if (quantity?.notation !== 'chinese') consume(token => Number(token) === item.quantity);
+  }
   if (remaining.length) invalid('原文含有未识别的金额，不能按留白计为0，请重试。');
 }
 function verifyInclusion(evidence: string, recordSource: string) {
@@ -78,10 +76,10 @@ function verifyInclusion(evidence: string, recordSource: string) {
     if (denied.test(context) || uncertain.test(context)) invalid('原文包含关系是否定或不明确，不能排除费用，请调整原文后重试。');
   }
 }
-function verifyCommissionReferences(items: Item[]) {
+function verifyCommissionReferences(items: Item[], references = items) {
   for (const item of items) {
     if (item.category !== 'commission') continue;
-    const sale = item.commissionFor === null ? null : items.find(candidate => candidate.id === item.commissionFor);
+    const sale = item.commissionFor === null ? null : references.find(candidate => candidate.id === item.commissionFor);
     if (item.commissionFor !== null && (!sale || sale.category !== 'income' || !sourceTokens(item.source).includes(sourceTokens(sale.source)))) invalid('提成关联销售缺少完整原文依据。');
     if (item.unitPrice !== null) {
       if (!sale || sale.quantity === null || sale.quantityUnit !== '束' || item.quantity !== sale.quantity || item.quantityUnit !== '束') invalid('每束提成必须关联数量明确的花束销售。');
@@ -97,43 +95,83 @@ function verifyCommissionReferences(items: Item[]) {
     }
   }
 }
-function validate(raw: unknown, text: string): RecordEntry[] {
+function validate(raw: unknown, text: string) {
   exact(raw, ['records']);
   if (!Array.isArray(raw.records) || !raw.records.length) throw new FinanceError('NO_RECORDS', '未识别到有日期的账目，请补充日期和记账内容。');
   if (raw.records.length > 200) invalid();
-  for (const record of raw.records) {
-    exact(record, ['year', 'month', 'day', 'source', 'items', 'checks']); source(record.source, text);
+  const records = structuredClone(raw.records);
+  const warnings: Warning[] = [];
+  const unresolvedAmounts = new Set<Item>();
+  for (const record of records) {
+    exact(record, ['year', 'month', 'day', 'source', 'items', 'checks']);
     const { year, month, day } = record;
     if (year !== null && (!Number.isInteger(year) || Number(year) < 1900 || Number(year) > 2200)) invalid();
     if (!Number.isInteger(month) || !Number.isInteger(day) || Number(month) < 1 || Number(month) > 12 || Number(day) < 1 || Number(day) > new Date(Date.UTC(Number(year ?? 2000), Number(month), 0)).getUTCDate()) throw new FinanceError('INVALID_DATE', '日期不明确或不合法，请补充日期后重试。');
+    const date = `${month}月${day}日`;
+    const review = (check: () => void, message: string) => {
+      try { check(); return true; }
+      catch (error) {
+        if (!(error instanceof FinanceError)) throw error;
+        warnings.push({ code: 'EXTRACTION_REVIEW', date, severity: 'review', message: `${date}${message}` });
+        return false;
+      }
+    };
+    if (typeof record.source !== 'string' || !record.source.trim()) invalid();
+    review(() => source(record.source, text), '记录与原文未能完全对应，先按已识别账目统计，请核对。');
     if (!Array.isArray(record.items) || !record.items.length || record.items.length > 300 || !Array.isArray(record.checks)) invalid();
     const ids = new Set<string>();
     for (const item of record.items) {
       exact(item, ['id', 'category', 'label', 'amount', 'unitPrice', 'quantity', 'quantityUnit', 'source', 'includedIn', 'inclusionSource', 'commissionFor']);
       if (typeof item.id !== 'string' || !item.id || ids.has(item.id) || typeof item.label !== 'string' || !item.label.trim() || !categories.includes(String(item.category))) invalid();
-      ids.add(item.id); source(item.source, record.source);
-      for (const key of ['amount', 'unitPrice']) if (item[key] !== null) { cents(item[key] as string); verifyAmount(item[key] as string, item.source); }
-      verifyQuantity(item.quantity, item.quantityUnit, item.source);
-      if (!(item.category === 'commission' && (item.unitPrice !== null || item.commissionFor !== null))) verifyMissingAmount(item as Item);
+      ids.add(item.id);
+      if (typeof item.source !== 'string' || !item.source.trim()) invalid();
+      review(() => source(item.source, record.source as string), `${item.label}的原文依据未能完整对应，先按识别值暂计，请核对。`);
+      for (const key of ['amount', 'unitPrice']) if (item[key] !== null) {
+        cents(item[key] as string); // Malformed or unsafe numeric values still cannot be calculated.
+        review(() => verifyAmount(item[key] as string, item.source as string), `${item.label}的${key === 'amount' ? '金额' : '单价'}${item[key]}元未能与原文逐一核对，先按识别的单价、数量或金额暂计，请核对。`);
+      }
+      if (item.quantity !== null && (typeof item.quantity !== 'number' || !Number.isSafeInteger(item.quantity) || item.quantity < 0)) invalid('识别出的数量格式不合法。');
+      if (item.quantityUnit !== null && (typeof item.quantityUnit !== 'string' || !/^[\p{L}]{1,12}$/u.test(item.quantityUnit))) invalid('识别出的数量单位格式不合法。');
+      review(() => verifyQuantity(item.quantity, item.quantityUnit, item.source as string), `${item.label}的数量或单位未能与原文逐一核对，先按已识别的数量${item.quantity ?? '未知'}${item.quantityUnit ?? '（单位未注明）'}暂计，请核对。`);
+      if (!(item.category === 'commission' && (item.unitPrice !== null || item.commissionFor !== null))) {
+        const canCalculate = item.amount !== null || (item.unitPrice !== null && item.quantity !== null);
+        if (!review(() => verifyMissingAmount(item as Item), `${item.label}可能还有未识别的金额，${canCalculate ? '先按已识别的单价和数量计算' : '该项金额暂未计入'}，请核对。`) && !canCalculate) unresolvedAmounts.add(item as Item);
+      }
       if (item.commissionFor !== null && (item.category !== 'commission' || typeof item.commissionFor !== 'string')) invalid('提成关联销售字段不合法。');
-      if (item.includedIn !== null && (typeof item.includedIn !== 'string' || item.includedIn === item.id)) invalid();
-      if (item.includedIn !== null) { source(item.inclusionSource, record.source); verifyInclusion(item.inclusionSource, record.source); }
+      if (item.includedIn !== null && typeof item.includedIn !== 'string') invalid();
+      if (item.includedIn !== null) {
+        if (!review(() => { source(item.inclusionSource, record.source as string); verifyInclusion(item.inclusionSource as string, record.source as string); }, `${item.label}的包含关系无法确认，暂不按这条关系排除费用；有红包仍按当日红包总额处理，请核对是否重复。`)) {
+          item.includedIn = null; item.inclusionSource = null;
+        }
+      }
       else if (item.inclusionSource !== null) invalid();
     }
     for (const item of record.items) if (item.includedIn !== null) {
       const parent = record.items.find((candidate: Item) => candidate.id === item.includedIn);
-      if (!parent || parent.includedIn !== null || parent.category === 'income' || item.category === 'income' || parent.amount === null) invalid('费用包含关系不合法。');
+      if (!parent || parent === item || parent.includedIn !== null || parent.category === 'income' || item.category === 'income' || parent.amount === null) {
+        item.includedIn = null; item.inclusionSource = null;
+        warnings.push({ code: 'EXTRACTION_REVIEW', date, severity: 'review', message: `${date}${item.label}对应的包含项目无法确认，暂不按这条关系排除费用；有红包仍按当日红包总额处理，请核对。` });
+      }
     }
-    verifyCommissionReferences(record.items as Item[]);
+    for (const item of record.items as Item[]) {
+      if (item.commissionFor !== null && !record.items.some((candidate: Item) => candidate.id === item.commissionFor && candidate.category === 'income')) {
+        item.commissionFor = null;
+        warnings.push({ code: 'EXTRACTION_REVIEW', date, severity: 'review', message: `${date}${item.label}对应的销售未能确定，保留已识别提成，并按当日红包规则处理，请核对。` });
+      }
+      review(() => verifyCommissionReferences([item], record.items as Item[]), `${item.label}的提成依据未能完整核对，先按已识别金额或单价×数量暂计；有红包时不重复计入，请核对。`);
+    }
     const items = record.items;
-    for (const check of record.checks) {
-      exact(check, ['amount', 'itemIds', 'source']); cents(check.amount as string); source(check.source, record.source); verifyAmount(check.amount as string, check.source);
+    record.checks = record.checks.filter(check => review(() => {
+      exact(check, ['amount', 'itemIds', 'source']); cents(check.amount as string); source(check.source, record.source as string); verifyAmount(check.amount as string, check.source);
       if (!Array.isArray(check.itemIds) || !check.itemIds.length || new Set(check.itemIds).size !== check.itemIds.length || check.itemIds.some(id => !ids.has(id))) invalid();
       const kinds = new Set(check.itemIds.map(id => items.find((item: Item) => item.id === id).category === 'income'));
       if (kinds.size !== 1) invalid();
-    }
+    }, '部分原文小计的金额或对应明细未能核对，暂不采用该小计；当前总额按已识别明细计算，请核对。'));
   }
-  return raw.records as RecordEntry[];
+  if (!records.some(record => (record.items as Item[]).some(item => item.amount !== null || (item.unitPrice !== null && item.quantity !== null)))) {
+    throw new FinanceError('NO_CALCULABLE_RECORDS', '没有识别到可计算的金额，请补充金额或单价、数量。');
+  }
+  return { records: records as RecordEntry[], warnings, unresolvedAmounts };
 }
 function buildBreakdown(rows: DailyRow[], incomeCents: number, expenseCents: number) {
   const priceGroups = new Map<string, IncomePriceGroup>();
@@ -163,12 +201,15 @@ function buildBreakdown(rows: DailyRow[], incomeCents: number, expenseCents: num
   return { incomeByPrice, unclassifiedIncomeCents, expenses };
 }
 export function calculateLedger(raw: unknown, text: string) {
-  const records = validate(raw, text);
-  verifyIncomeTotalCoverage(records, text);
+  const { records, warnings, unresolvedAmounts } = validate(raw, text);
+  try { verifyIncomeTotalCoverage(records, text); }
+  catch (error) {
+    if (!(error instanceof FinanceError)) throw error;
+    warnings.push({ code: 'INCOME_CHECK_INCOMPLETE', date: '', severity: 'review', message: '部分原文收入合计未能完整核对，先按已识别账目统计，请核对收入明细和合计。' });
+  }
   const months = new Set(records.map(record => record.month));
   const years = new Set(records.map(record => record.year).filter(year => year !== null));
   if (months.size !== 1 || years.size > 1) throw new FinanceError('MULTIPLE_MONTHS', '请每次粘贴一个月的账目。');
-  const warnings: Warning[] = [];
   const seen = new Set<string>();
   const days = new Map<number, { record: RecordEntry; recordIndex: number }[]>();
   const blankDates = new Set<string>();
@@ -183,18 +224,23 @@ export function calculateLedger(raw: unknown, text: string) {
   for (const [day, dayRecords] of days) {
     const date = `${records[0].month}月${day}日`;
     const entries: CalculatedEntry[] = [];
+    const reconciliations = new Map<number, ReturnType<typeof incomeChecks>>();
     for (const { record, recordIndex } of dayRecords) {
+      const reconciled = incomeChecks(record);
+      reconciliations.set(recordIndex, reconciled);
+      for (const warning of reconciled.warnings) warnings.push({ code: 'INCOME_CHECK_INCOMPLETE', date, ...warning, message: `${date}${warning.message}` });
       for (const item of record.items) {
+        if (reconciled.ignoredItemIds.has(item.id)) continue;
         let amount = item.amount === null ? 0 : cents(item.amount);
         if (item.unitPrice !== null && item.quantity !== null) {
           const computed = multiply(cents(item.unitPrice), item.quantity);
           amount = computed;
-        } else if (item.amount === null && item.category !== 'redPacket' && item.category !== 'commission') blankDates.add(date);
+        } else if (item.amount === null && item.category !== 'redPacket' && item.category !== 'commission' && !unresolvedAmounts.has(item)) blankDates.add(date);
         const detail: Detail = {
           label: item.label, category: item.category, amountCents: amount,
           unitPriceCents: item.unitPrice === null ? null : cents(item.unitPrice), quantity: item.quantity, quantityUnit: item.quantityUnit,
           source: item.source, included: item.includedIn !== null,
-          accountingNote: item.includedIn !== null ? '原文明示已包含于其他支出，未重复计入'
+          accountingNote: unresolvedAmounts.has(item) ? '金额暂未确定，未计入当前合计' : item.includedIn !== null ? '原文明示已包含于其他支出，未重复计入'
             : item.category === 'commission' && item.unitPrice !== null && item.quantity !== null
               ? `原文明示每束提成，按${item.quantity}束×${money(cents(item.unitPrice))}元＝${money(amount)}元计算` : null,
         };
@@ -216,9 +262,10 @@ export function calculateLedger(raw: unknown, text: string) {
           : '两者不一致，无法确定哪项记错；当前按单价×数量计入，请核对单价、数量和金额后修改原文重新统计。'}`,
       });
     }
-    for (const { record, recordIndex } of dayRecords) {
+    for (const { recordIndex } of dayRecords) {
       const amounts = new Map(policy.entries.filter(entry => entry.recordIndex === recordIndex).map(entry => [entry.item.id, entry.detail.included ? 0 : entry.detail.amountCents]));
-      const reconciled = incomeChecks(record);
+      const reconciled = reconciliations.get(recordIndex)!;
+      for (const id of reconciled.ignoredItemIds) amounts.set(id, 0);
       for (const check of reconciled.checks) {
         const computed = sum(check.itemIds.map(id => amounts.get(id)!));
         const stated = cents(check.amount);
