@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>微信服务号推送</title>
+  <style>
+    :root { color-scheme: light; }
+    body { max-width: 740px; margin: 40px auto; padding: 0 20px; color: #202124; font: 16px/1.7 system-ui, sans-serif; }
+    a { color: #0969da; }
+    h1 { margin: 20px 0 12px; font-size: clamp(26px, 5vw, 34px); }
+    pre { padding: 16px; overflow: auto; background: #f6f8fa; border-radius: 7px; font: 14px/1.65 ui-monospace, monospace; }
+    button { padding: 8px 15px; margin-right: 12px; border: 1px solid #333; background: white; border-radius: 5px; color: inherit; font: inherit; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: default; }
+    #status { color: #555; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <a href="/docs/">文档首页</a>
+  <main>
+    <h1>微信服务号推送</h1>
+    <button type="button" id="copy" disabled>复制给 Agent（含密钥）</button>
+    <a href="/docs/pushplus-notify.md">Markdown</a>
+    <p role="status" id="status">读取接入说明中…</p>
+    <article id="guide"></article>
+  </main>
+  <script type="module">
+    const guide = document.getElementById('guide');
+    const status = document.getElementById('status');
+    const copy = document.getElementById('copy');
+    const options = { credentials: 'same-origin', cache: 'no-store' };
+    const placeholder = '${PUSHPLUS_NOTIFY_API_KEY}';
+
+    // This guide contains paragraphs and one fenced curl command. Render both as text.
+    function showGuide(markdown) {
+      const blocks = markdown.trim().split(/\n\s*\n/).slice(1);
+      guide.replaceChildren(...blocks.map(block => {
+        const command = block.startsWith('```bash\n') && block.endsWith('\n```');
+        const node = document.createElement(command ? 'pre' : 'p');
+        node.textContent = command ? block.slice(8, -4) : block;
+        return node;
+      }));
+    }
+
+    let agentGuide;
+    try {
+      const response = await fetch('/docs/pushplus-notify.md', options);
+      if (!response.ok) throw new Error();
+      const markdown = await response.text();
+      if (!markdown.startsWith('# 微信服务号推送\n') || !markdown.includes(placeholder)) throw new Error();
+      showGuide(markdown);
+      status.textContent = '正在读取服务号接口密钥…';
+
+      const keyResponse = await fetch('/docs/pushplus-notify-credentials.local.json', options);
+      if (!keyResponse.ok) throw new Error();
+      const key = await keyResponse.json();
+      if (key?.schemaVersion !== 1 || key.status !== 'completed' || typeof key.apiKey !== 'string'
+          || !/^[a-zA-Z0-9_-]{32,}$/.test(key.apiKey)) throw new Error();
+      agentGuide = markdown.replace(placeholder, key.apiKey);
+      showGuide(agentGuide);
+      status.textContent = '';
+      copy.disabled = false;
+    } catch {
+      status.textContent = '接入说明或密钥未能加载，请重新登录文档后刷新。';
+    }
+
+    copy.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(agentGuide);
+        status.textContent = '已复制接入说明和服务号接口密钥。';
+      } catch {
+        const selection = window.getSelection();
+        selection.selectAllChildren(guide);
+        status.textContent = '请手动复制选中的接入说明。';
+      }
+    });
+  </script>
+</body>
+</html>

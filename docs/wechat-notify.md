@@ -1,6 +1,6 @@
-# 微信推送接口规范
+# 微信 ClawBot 推送接口
 
-任何应用都可按此规范向已配置的微信接收渠道推送消息。不支持指定收件人或群发。服务端可选 PushPlus 微信公众号或 ClawBot，调用地址、密钥与请求格式不变。
+向已绑定的微信 ClawBot 会话发送消息。
 
 <h2 id="notify-api-key">接口密钥</h2>
 
@@ -97,8 +97,6 @@ curl 'https://yinlubin.cn/api/wechat/notify' \
 
 日报 `report.status` 通常为 `queued → processing → completed`，失败为 `failed`；`idle`、`partial` 是历史状态。音频以 `audioStatus` 为准：`pending` 生成中、`ready` 可播放、`failed` 失败，`not_requested` 为旧记录等待迁移。生成失败仍保留原文，不自动重新生成。
 
-使用 PushPlus 时，受理响应另含 `provider: "pushplus"`、`channel: "wechat"`、`providerMessageId`（上游流水号）和 `deliveryStatus: "pending"`。这里只记录受理回执，不查询最终投递；最终结果可在 PushPlus 的消息记录中查看。
-
 ## 6. 查询与重试
 
 以下查询使用同一个 `Authorization` 请求头：
@@ -108,24 +106,14 @@ GET https://yinlubin.cn/api/wechat/notify/requests/<requestId>
 GET https://yinlubin.cn/api/wechat/notify/status
 ```
 
-前者读取本地发送记录及日报状态，不查询实际上游送达。后者查看通道配置：PushPlus 的 `configured` 仅表示已配置 Token；ClawBot 的 `contextAvailable` 只表示存有会话凭据，`contextUpdatedAt` 为最后收到该凭据的时间。均不保证投递成功。
+前者读取本地发送记录及日报状态，不查询实际上游送达。后者查看 ClawBot 通道配置： `contextAvailable` 只表示存有会话凭据，`contextUpdatedAt` 为最后收到该凭据的时间。均不保证投递成功。
 
 同一编号、相同内容返回已有结果，`deduplicated: true`，不会重复发送或生成。相同编号换内容返回 **409**。未传编号则每次都是新请求。
 
 常见错误：**400 / 413 / 415** 参数或格式不正确；**401** 密钥不正确；**409** 会话不可用、编号冲突或结果待确认；**429** 忙碌或限流；**502 / 503** 微信上游或服务异常。以 JSON 的 `status`、`code` 为准，网络超时或网关错误不代表未发送。
 
-PushPlus 每分钟最多 5 次，ClawBot 每分钟最多 10 次；上海日期每天均最多 100 次，同时处理 1 个发送请求。上游还可能另有限额。遇到限流，稍后使用原编号重试；发送已进入终态的记录不会因重试而重发。
+每分钟最多 10 次，按上海日期每天最多 100 次，同时处理 1 个发送请求。上游还可能另有限额。遇到限流，稍后使用原编号重试；发送已进入终态的记录不会因重试而重发。
 
 **ClawBot 连续拒绝时：** `WECHAT_REJECTED` 且 `upstreamRet` 或 `upstreamErrcode` 为 `-2`，可能与会话失效或微信侧限制有关。先给机器人发消息更新会话；重启服务器不会刷新凭据。此通道不保证长期无人互动的定时推送。
 
-**PushPlus 拒绝时：** 根据 `code` 和 `upstreamCode` 处理；`905` 表示未实名、`903` 表示 Token 无效、`900` 表示账户受限。不会自动改用 ClawBot 补发。
-
 确认旧请求为 `failed` 且需要补发时，人工决定使用新编号；`unknown`、`submitted` 不要自动补发。历史查询不会自动变成“已送达”。
-
-## 7. PushPlus 开通（服务端配置）
-
-1. 在 [PushPlus](https://www.pushplus.plus/push1.html) 微信扫码登录，关注其公众号，并按官方要求完成实名认证。
-2. 取得用户 Token 或消息 Token，在服务器环境文件配置 `PUSHPLUS_TOKEN`；设置 `WECHAT_NOTIFY_PROVIDER=pushplus` 后重启服务。未设置 provider 时仍使用 `clawbot`。
-3. 发送一条测试消息，在公众号和 PushPlus 消息记录核对。已有调用方无需改接口；原 ClawBot 的聊天自动回复不受影响。
-
-固定使用免费公众号渠道 `wechat`，不使用 `clawbot`。通知卡片标题最多展示 100 字，完整标题仍保留在正文。配置和受理不等于手机送达；详见 [PushPlus 官方接口](https://www.pushplus.plus/doc/guide/api.html)。

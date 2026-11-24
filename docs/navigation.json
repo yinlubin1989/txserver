@@ -37,7 +37,11 @@
       "href": "/docs/wechat-ledger.html"
     },
     {
-      "title": "微信推送接口",
+      "title": "微信服务号推送",
+      "href": "/docs/pushplus-notify.html"
+    },
+    {
+      "title": "微信 ClawBot 推送",
       "href": "/docs/wechat-notify.html"
     },
     {
