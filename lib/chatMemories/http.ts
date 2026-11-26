@@ -8,8 +8,8 @@ async function authorize(request: Request) {
   const token = /^Bearer ([A-Za-z0-9_-]{32})$/.exec(request.headers.get('authorization') ?? '')?.[1];
   const denied = () => new ChatMemoriesError('UNAUTHORIZED', '请使用聊天手记的访问口令解锁。', 401);
   if (!token) throw denied();
-  const digestPath = process.env.CHAT_MEMORIES_KEY_HASH_FILE || '/var/lib/wenwen/chat-memory/key.sha256';
-  const digest = (await readFile(digestPath, 'utf8')).trim();
+  const digest = process.env.CHAT_MEMORIES_KEY_SHA256
+    ?? (await readFile(/* turbopackIgnore: true */ '/var/lib/wenwen/chat-memory/key.sha256', 'utf8')).trim();
   if (!/^[a-f0-9]{64}$/.test(digest)) throw new Error('Invalid archive key configuration');
   if (!timingSafeEqual(createHash('sha256').update(token).digest(), Buffer.from(digest, 'hex'))) throw denied();
 }
