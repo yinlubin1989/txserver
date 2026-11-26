@@ -4,8 +4,20 @@ import { ChatMemoriesError } from './errors';
 
 const headers = { 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff', Vary: 'Authorization' };
 
+function archiveKey(authorization: string) {
+  const legacy = /^Bearer ([A-Za-z0-9_-]{32})$/.exec(authorization);
+  if (legacy) return legacy[1];
+  // Basic carries UTF-8 passphrases over an ASCII-only HTTP header.
+  const basic = /^Basic ([A-Za-z0-9+/]{1,2048}={0,2})$/i.exec(authorization);
+  if (!basic) return null;
+  const credentials = Buffer.from(basic[1], 'base64').toString('utf8');
+  const prefix = 'memories:';
+  if (!credentials.startsWith(prefix) || Buffer.from(credentials, 'utf8').toString('base64') !== basic[1]) return null;
+  return credentials.slice(prefix.length);
+}
+
 async function authorize(request: Request) {
-  const token = /^Bearer ([A-Za-z0-9_-]{32})$/.exec(request.headers.get('authorization') ?? '')?.[1];
+  const token = archiveKey(request.headers.get('authorization') ?? '');
   const denied = () => new ChatMemoriesError('UNAUTHORIZED', '请使用聊天手记的访问口令解锁。', 401);
   if (!token) throw denied();
   const digest = process.env.CHAT_MEMORIES_KEY_SHA256
